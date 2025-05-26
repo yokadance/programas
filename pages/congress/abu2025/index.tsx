@@ -1,0 +1,50 @@
+import { ABU_PROGRAMME } from "@/http/api";
+import { ProgrammeData } from "@/type/type";
+import React, { useEffect, useState } from "react";
+import Header from "../../../components/Header";
+import AgendaTable from "@/components/AgendaTable";
+
+const ABU2025: React.FC = () => {
+  const [data, setData] = useState<ProgrammeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(ABU_PROGRAMME);
+        if (!res.ok) {
+          console.error("Error fetching data:", res.statusText);
+          setError("Error fetching data");
+          setLoading(false);
+          return;
+        }
+        const json = await res.json();
+        setData(json); // json.Programme es el objeto principal
+      } catch (err) {
+        setError("Network error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) return <p>Cargando programa...</p>;
+  if (error) return <p>Error: {error}</p>;
+  console.log("Programa:", data);
+  if (!data) return <p>No hay datos disponibles, data undefinded</p>;
+  return (
+    <>
+      <Header
+        labels={data.Programme.Days.map(
+          (day: ProgrammeData["Days"][number]) => day.Date_String
+        )}
+      />
+      <AgendaTable data={data} />;
+    </>
+  );
+};
+
+export default ABU2025;
