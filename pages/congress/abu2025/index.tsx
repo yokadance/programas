@@ -37,11 +37,6 @@ const ABU2025: React.FC = () => {
   if (!data) return <p>No hay datos disponibles, data undefinded</p>;
   return (
     <>
-      <Header
-        labels={data.Programme.Days.map(
-          (day: ProgrammeData["Days"][number]) => day.Date_String
-        )}
-      />
       <AgendaTable data={data} />;
     </>
   );
