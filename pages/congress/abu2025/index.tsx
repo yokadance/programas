@@ -3,6 +3,7 @@ import { ProgrammeData } from "@/type/type";
 import React, { useEffect, useState } from "react";
 import Header from "../../../components/Header";
 import AgendaTable from "@/components/AgendaTable";
+import Loader from "@/components/Loader";
 
 const ABU2025: React.FC = () => {
   const [data, setData] = useState<ProgrammeData | null>(null);
@@ -31,7 +32,8 @@ const ABU2025: React.FC = () => {
     fetchData();
   }, []);
 
-  if (loading) return <p>Cargando programa...</p>;
+  if (loading)
+    return <Loader src="/loader/logoAbu25.png" alt="Cargando..." size={128} />;
   if (error) return <p>Error: {error}</p>;
   console.log("Programa:", data);
   if (!data) return <p>No hay datos disponibles, data undefinded</p>;

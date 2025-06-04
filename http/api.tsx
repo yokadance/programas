@@ -4,4 +4,5 @@ export const API_ABU2025 = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_AB
 
 //ABU PROGRAMA:
 export const ABU_PROGRAMME = `${API_ABU2025}/Programme/1/0/`;
-    
+
+export const ABU_FACULTY = `${API_ABU2025}/Faculty/`;

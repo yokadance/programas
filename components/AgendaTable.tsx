@@ -1,5 +1,19 @@
 import { ProgrammeData, Session } from "@/type/type";
 import React, { useState } from "react";
+import {
+  Clock,
+  Mic,
+  MapPin,
+  UserRound,
+  CoffeeIcon,
+  Sandwich,
+  Utensils,
+  Presentation,
+  ArrowRight,
+  Glasses,
+  Martini,
+  UtensilsCrossed,
+} from "lucide-react";
 
 type AgendaTableProps = {
   data: ProgrammeData;
@@ -8,27 +22,64 @@ type AgendaTableProps = {
 const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
   const days = Object.keys(data.Programme.Days);
   const [selectedDay, setSelectedDay] = useState(days[0]);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
 
-  const sessions: Session[] = Object.values(
+  const allSessions: Session[] = Object.values(
     data.Programme.Days[selectedDay].Session_Groups
   )
     .flatMap((group) => group.Sessions)
     .sort((a, b) => a.Session_Start_Time.localeCompare(b.Session_Start_Time));
 
+  const uniqueRooms = Array.from(
+    new Set(allSessions.map((s) => s.Session_Location).filter(Boolean))
+  );
+
+  const sessions = selectedRoom
+    ? allSessions.filter((s) => s.Session_Location === selectedRoom)
+    : allSessions;
+
+  const getIcon = (title: string) => {
+    const lower = title.toLowerCase();
+    if (lower.includes("cena"))
+      return <UtensilsCrossed className="w-4 h-4 text-orange-500" />;
+    if (lower.includes("cocktail"))
+      return <Martini className="w-4 h-4 text-orange-500" />;
+    if (lower.includes("almuerzo"))
+      return <Utensils className="w-4 h-4 text-yellow-500" />;
+    if (lower.includes("coffee") || lower.includes("coffee"))
+      return <CoffeeIcon className="w-4 h-4 text-amber-900" />;
+    return <Presentation className="w-4 h-4 text-blue-500" />;
+  };
+
+  const [selectedSpeaker, setSelectedSpeaker] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openSpeakerModal = (speaker: any) => {
+    setSelectedSpeaker(speaker);
+    setIsModalOpen(true);
+  };
+
+  const closeSpeakerModal = () => {
+    setSelectedSpeaker(null);
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-4">
       {/* Botones de días */}
-      <div className="flex flex-wrap justify-center gap-3 mb-8">
+      <div className="flex flex-wrap justify-center gap-3 mb-6">
         {days.map((day) => (
           <button
             key={day}
-            onClick={() => setSelectedDay(day)}
+            onClick={() => {
+              setSelectedDay(day);
+              setSelectedRoom(null);
+            }}
             className={`px-5 py-2.5 rounded-full text-sm font-medium transition ${
               selectedDay === day
                 ? "bg-blue-600 text-white shadow"
                 : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-            }`}
-          >
+            }`}>
             {new Date(data.Programme.Days[day].Date_String).toLocaleDateString(
               "es-ES",
               { weekday: "short", day: "2-digit", month: "short" }
@@ -37,7 +88,34 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
         ))}
       </div>
 
-      {/* 🖥️ Vista de tabla para escritorio */}
+      {/* Filtro por sala */}
+      {uniqueRooms.length > 1 && (
+        <div className="flex flex-wrap justify-center gap-3 mb-8">
+          <button
+            onClick={() => setSelectedRoom(null)}
+            className={`px-4 py-1.5 text-sm rounded-full border ${
+              selectedRoom === null
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+            }`}>
+            Todas las salas
+          </button>
+          {uniqueRooms.map((room) => (
+            <button
+              key={room}
+              onClick={() => setSelectedRoom(room)}
+              className={`px-4 py-1.5 text-sm rounded-full border ${
+                selectedRoom === room
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+              }`}>
+              {room}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 🖥️ Vista de tabla */}
       <div className="overflow-x-auto rounded-xl shadow-lg ring-1 ring-gray-200 hidden md:block">
         <table className="min-w-full divide-y divide-gray-200 bg-white text-sm">
           <thead className="bg-blue-50 text-gray-700 uppercase text-xs tracking-wider sticky top-0 z-10">
@@ -45,59 +123,75 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
               <th className="px-4 py-3 text-left">Hora</th>
               <th className="px-4 py-3 text-left">Sesión</th>
               <th className="px-4 py-3 text-left">Ubicación</th>
-              <th className="px-4 py-3 text-left">Oradores</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {sessions.map((session, index) => (
-              <tr key={index} className="hover:bg-blue-50 transition">
-                <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-800">
-                  {session.Session_Start_Time} - {session.Session_End_Time}
+              <tr key={index} className="align-top border-t border-gray-200">
+                <td className="px-4 py-4 font-medium text-gray-800 w-32 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-blue-500" />
+                    {session.Session_Start_Time} - {session.Session_End_Time}
+                  </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="font-semibold text-gray-900">
+                <td className="px-4 py-4 w-3/5">
+                  <div className="flex items-center gap-2 mb-1 text-blue-900 font-semibold">
+                    <span className="w-4 h-4 text-blue-500 flex-shrink-0">
+                      {typeof getIcon(session.Session_Title) === "string"
+                        ? getIcon(session.Session_Title)
+                        : getIcon(session.Session_Title)}
+                    </span>
                     {session.Session_Title}
                   </div>
-                  <div className="text-gray-500 text-xs mt-0.5">
-                    {session.Session_Type}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-gray-700">
-                  {session.Session_Location}
-                </td>
-                <td className="px-4 py-3">
-                  {session.Presentations?.length ? (
-                    <div className="space-y-4">
-                      <div className="text-xs text-gray-500 font-medium">
-                        Presentación:
-                      </div>
-                      {session.Presentations.map((presentation, pIdx) => (
-                        <div key={pIdx}>
-                          <div className="text-sm font-medium text-blue-700 mb-1">
+                  {session.Session_Chair && (
+                    <div className="flex items-center text-sm text-gray-600 mb-3">
+                      <UserRound className="w-4 h-4 mr-2 text-blue-400" />
+                      Coordina y modera:
+                      <span className="ml-1 text-blue-700 font-medium">
+                        {session.Session_Chair}
+                      </span>
+                    </div>
+                  )}
+                  <div className="space-y-3 mt-3 px-1">
+                    {session.Presentations?.map((presentation, pIdx) => (
+                      <div
+                        key={pIdx}
+                        className={`pl-4 relative ${
+                          pIdx !== 0
+                            ? "border-t border-gray-100 mt-3 pt-3"
+                            : "mt-2"
+                        }`}>
+                        <div className="relative pl-4">
+                          <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
+                          <div className="ml-2 text-sm text-gray-800 font-medium">
                             {presentation.Presentation_Title}
                           </div>
-                          <ul className="space-y-2">
+                          <ul className="mt-2 space-y-1 ml-2">
                             {presentation.AllSpeakers.map((spk, i) => (
-                              <li key={i} className="flex items-center gap-3">
+                              <li key={i} className="flex items-center gap-2">
                                 <img
                                   src={spk.Image01 || "/user-avatar.png"}
                                   alt={spk.Full_Name}
-                                  className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-300"
+                                  className="w-7 h-7 rounded-full object-cover ring-1 ring-gray-300"
                                 />
-                                <span className="text-gray-800">
+                                <button
+                                  onClick={() => openSpeakerModal(spk)}
+                                  className="text-sm text-blue-700 hover:underline text-left">
                                   {spk.Full_Name}
-                                </span>
+                                </button>
                               </li>
                             ))}
                           </ul>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-gray-500 italic">
-                      {session.Session_Chair || "—"}
-                    </span>
-                  )}
+                      </div>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-4 py-4 w-48 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-blue-500" />
+                    {session.Session_Location || "—"}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -105,62 +199,113 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
         </table>
       </div>
 
-      {/* 📱 Vista tipo tarjeta para celulares */}
+      {/* 📱 Vista móvil */}
+      {/* 📱 Vista móvil */}
       <div className="block md:hidden space-y-4">
         {sessions.map((session, index) => (
           <div
             key={index}
-            className="bg-white rounded-xl shadow-md p-4 border border-gray-200"
-          >
-            <div className="text-sm text-gray-500 mb-2">
+            className="bg-white rounded-xl shadow-md p-4 border border-gray-200">
+            {/* Hora */}
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+              <Clock className="w-4 h-4 text-blue-500" />
               {session.Session_Start_Time} - {session.Session_End_Time}
             </div>
-            <div className="font-semibold text-gray-900 text-base">
+
+            {/* Título con ícono */}
+            <div className="flex items-center gap-2 text-base text-gray-900 font-semibold mb-1">
+              <span className="w-4 h-4 text-blue-500 flex-shrink-0">
+                {getIcon(session.Session_Title)}
+              </span>
               {session.Session_Title}
             </div>
+
+            {/* Tipo de sesión */}
             <div className="text-xs text-gray-600 mb-2">
               {session.Session_Type}
             </div>
-            <div className="text-sm text-gray-700 mb-2">
-              <span className="font-medium">Ubicación:</span>{" "}
-              {session.Session_Location}
+
+            {/* Ubicación */}
+            <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+              <MapPin className="w-4 h-4 text-blue-500" />
+              {session.Session_Location || "—"}
             </div>
+
+            {/* Coordinador/Moderador */}
+            {session.Session_Chair && (
+              <div className="flex items-center gap-2 text-sm text-blue-700 font-medium mb-3">
+                <UserRound className="w-4 h-4" />
+                Coordina y modera: <span>{session.Session_Chair}</span>
+              </div>
+            )}
+
+            {/* Oradores */}
             <div className="text-sm text-gray-700">
               <span className="font-medium">Oradores:</span>
-              <div className="mt-1 space-y-2">
+              <div className="mt-1 space-y-3">
                 {session.Presentations?.length ? (
-                  <div className="space-y-4">
-                    <span className="font-medium">Presentación:</span>
-                    {session.Presentations.map((presentation, pIdx) => (
-                      <div key={pIdx}>
-                        <div className="text-sm font-medium text-blue-700 mb-1">
-                          {presentation.Presentation_Title}
-                        </div>
-                        <div className="space-y-2">
-                          {presentation.AllSpeakers.map((spk, i) => (
-                            <div key={i} className="flex items-center gap-3">
-                              <img
-                                src={spk.Image01 || "/user-avatar.png"}
-                                alt={spk.Full_Name}
-                                className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-300"
-                              />
-                              <span>{spk.Full_Name}</span>
-                            </div>
-                          ))}
-                        </div>
+                  session.Presentations.map((presentation, pIdx) => (
+                    <div key={pIdx}>
+                      <div className="text-sm font-medium text-blue-700 mb-1">
+                        {presentation.Presentation_Title}
                       </div>
-                    ))}
-                  </div>
+                      <div className="space-y-2">
+                        {presentation.AllSpeakers.map((spk, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <img
+                              src={spk.Image01 || "/user-avatar.png"}
+                              alt={spk.Full_Name}
+                              className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-300"
+                            />
+                            <button
+                              onClick={() => openSpeakerModal(spk)}
+                              className="text-blue-700 hover:underline text-left">
+                              {spk.Full_Name}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
                 ) : (
-                  <span className="italic text-gray-500">
-                    {session.Session_Chair || "—"}
-                  </span>
+                  <span className="italic text-gray-500">—</span>
                 )}
               </div>
             </div>
           </div>
         ))}
       </div>
+      {isModalOpen && selectedSpeaker && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            <button
+              onClick={closeSpeakerModal}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800">
+              ✕
+            </button>
+            <div className="flex items-center gap-4 mb-4">
+              <img
+                src={selectedSpeaker.Image01 || "/user-avatar.png"}
+                alt={selectedSpeaker.Full_Name}
+                className="w-16 h-16 rounded-full object-cover ring-1 ring-gray-300"
+              />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {selectedSpeaker.Full_Name}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {selectedSpeaker.Institution}
+                </p>
+              </div>
+            </div>
+            {selectedSpeaker.Biography && (
+              <p className="text-sm text-gray-700 whitespace-pre-line">
+                {selectedSpeaker.Biography}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

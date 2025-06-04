@@ -122,3 +122,41 @@ export type Abstract = {
   Authors: any[];
   AllAuthorsList: string;
 }
+
+
+// types.ts
+export interface FacultyAssignment {
+  Session_Id: string;
+  Session_Title: string;
+  Session_Type: string;
+  Session_Type_Description: string;
+  Session_Date: string;
+  Session_Start_Time: string;
+  Session_End_Time: string;
+  Type_Of_Session_Id: number;
+  Type_Of_Session: string;
+  Is_Poster_Session: number;
+  Room_Id: string;
+  Room_Name: string;
+  Presentation_Id: string;
+  Presentation_Title: string;
+}
+
+export interface FacultyData {
+  Faculty_Id: string;
+  First_Name: string;
+  Family_Name: string;
+  Prefix_Title: string;
+  Suffix_Title: string;
+  Company: string;
+  EMail: string;
+  Country_Name: string;
+  Image01: string;
+  Biography: string;
+  Assignments: {
+    presentations: FacultyAssignment[];
+    sessions: FacultyAssignment[];
+    abstracts: any[];
+    all: FacultyAssignment[];
+  };
+}
