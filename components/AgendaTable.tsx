@@ -15,6 +15,8 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 
+import parse from "html-react-parser";
+
 type AgendaTableProps = {
   data: ProgrammeData;
 };
@@ -300,7 +302,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
             </div>
             {selectedSpeaker.Biography && (
               <p className="text-sm text-gray-700 whitespace-pre-line">
-                {selectedSpeaker.Biography}
+                {parse(selectedSpeaker.Biography)}
               </p>
             )}
           </div>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { ABU_FACULTY } from "@/http/api";
 import { FacultyData } from "@/type/type";
+import parse from "html-react-parser";
 
 type FacultyModalProps = {
   facultyId: string;
@@ -46,6 +47,8 @@ const FacultyModal: React.FC<FacultyModalProps> = ({ facultyId, onClose }) => {
     );
   }
 
+
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="relative bg-white max-w-2xl w-full rounded-xl shadow-xl overflow-auto max-h-[90vh] p-6">
@@ -86,10 +89,9 @@ const FacultyModal: React.FC<FacultyModalProps> = ({ facultyId, onClose }) => {
 
             {/* Biografía */}
             {faculty.Biography && (
-              <div
-                className="mt-6 text-sm text-gray-700 prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: faculty.Biography }}
-              />
+              <div className="mt-6 text-sm text-gray-700 prose max-w-none">
+                {parse(faculty.Biography)}
+              </div>
             )}
 
             {/* Asignaciones */}
