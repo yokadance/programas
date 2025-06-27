@@ -1,4 +1,4 @@
-import { ProgrammeData, Session } from "@/type/type";
+import { ProgrammeData, Session, Speaker } from "@/type/type";
 import React, { useState } from "react";
 import {
   Clock,
@@ -16,12 +16,15 @@ import {
 } from "lucide-react";
 
 import parse from "html-react-parser";
+import FacultyModal from "./FacultyModal";
+import { ABU_FACULTY } from "@/http/api";
 
 type AgendaTableProps = {
   data: ProgrammeData;
+  facultyEndpoint?: string; // Opcional, si se quiere usar otro endpoint
 };
 
-const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
+const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
   const days = Object.keys(data.Programme.Days);
   const [selectedDay, setSelectedDay] = useState(days[0]);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
@@ -48,7 +51,11 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
       return <Martini className="w-4 h-4 text-orange-500" />;
     if (lower.includes("almuerzo"))
       return <Utensils className="w-4 h-4 text-yellow-500" />;
-    if (lower.includes("coffee") || lower.includes("coffee"))
+    if (
+      lower.includes("coffee") ||
+      lower.includes("coffee") ||
+      lower.includes("café")
+    )
       return <CoffeeIcon className="w-4 h-4 text-amber-900" />;
     return <Presentation className="w-4 h-4 text-blue-500" />;
   };
@@ -56,13 +63,19 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
   const [selectedSpeaker, setSelectedSpeaker] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const openSpeakerModal = (speaker: any) => {
-    setSelectedSpeaker(speaker);
+  const [selectedFacultyId, setSelectedFacultyId] = useState<string | null>(
+    null
+  );
+
+  const openSpeakerModal = (speaker: Speaker) => {
+    console.log("Abriendo modal para speaker:", speaker.Faculty_Id);
+
+    setSelectedFacultyId(speaker.Faculty_Id); // o el campo que identifica al speaker para tu API
     setIsModalOpen(true);
   };
 
   const closeSpeakerModal = () => {
-    setSelectedSpeaker(null);
+    setSelectedFacultyId(null);
     setIsModalOpen(false);
   };
 
@@ -277,36 +290,12 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data }) => {
           </div>
         ))}
       </div>
-      {isModalOpen && selectedSpeaker && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
-            <button
-              onClick={closeSpeakerModal}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800">
-              ✕
-            </button>
-            <div className="flex items-center gap-4 mb-4">
-              <img
-                src={selectedSpeaker.Image01 || "/user-avatar.png"}
-                alt={selectedSpeaker.Full_Name}
-                className="w-16 h-16 rounded-full object-cover ring-1 ring-gray-300"
-              />
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {selectedSpeaker.Full_Name}
-                </h2>
-                <p className="text-sm text-gray-600">
-                  {selectedSpeaker.Institution}
-                </p>
-              </div>
-            </div>
-            {selectedSpeaker.Biography && (
-              <p className="text-sm text-gray-700 whitespace-pre-line">
-                {parse(selectedSpeaker.Biography)}
-              </p>
-            )}
-          </div>
-        </div>
+      {isModalOpen && selectedFacultyId && (
+        <FacultyModal
+          facultyId={selectedFacultyId}
+          endpointUrl={facultyEndpoint ?? ""}
+          onClose={closeSpeakerModal}
+        />
       )}
     </div>
   );
