@@ -9,3 +9,5 @@ export const ABU_FACULTY = `${API_ABU2025}/Faculty/`;
 
 export const VIALIDAD_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_VIALIDAD025}/Programme/1/0/`;
 export const VIALIDAD_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_VIALIDAD025}/Faculty/`;
+
+console.log(VIALIDAD_PROGRAMME);

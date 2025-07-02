@@ -1,4 +1,4 @@
-import { ProgrammeData, Session, Speaker } from "@/type/type";
+import { Authors, ProgrammeData, Session, Speaker } from "@/type/type";
 import React, { useState } from "react";
 import {
   Clock,
@@ -17,7 +17,7 @@ import {
 
 import parse from "html-react-parser";
 import FacultyModal from "./FacultyModal";
-import { ABU_FACULTY } from "@/http/api";
+import { Author } from "next/dist/lib/metadata/types/metadata-types";
 
 type AgendaTableProps = {
   data: ProgrammeData;
@@ -180,6 +180,16 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
                           <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
                           <div className="ml-2 text-sm text-gray-800 font-medium">
                             {presentation.Presentation_Title}
+                            <ul className="list-disc list-inside text-xs text-gray-600">
+                              {presentation.Abstract.Authors.map(
+                                (author: Authors, index: number) => (
+                                  <li key={index}>
+                                    {author.First_Name} {author.Family_Name} -{" "}
+                                    {author.Country_Name} - {author.Company}
+                                  </li>
+                                )
+                              )}
+                            </ul>
                           </div>
                           <ul className="mt-2 space-y-1 ml-2">
                             {presentation.AllSpeakers.map((spk, i) => (

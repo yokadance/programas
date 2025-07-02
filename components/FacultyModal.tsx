@@ -81,7 +81,7 @@
 //                   {faculty.Family_Name} {faculty.Suffix_Title}
 //                 </h2>
 //                 <p className="text-sm text-gray-600">{faculty.Country_Name}</p>
-//                 <p className="text-sm text-blue-600">{faculty.EMail}</p>
+//                 <p className="text-sm text-blue-600">{faculty.m }</p>
 //               </div>
 //             </div>
 
@@ -130,11 +130,20 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { FacultyData } from "@/type/type";
+import countries from "../country-flags/countries_with_flags.json"; // Asegúrate de tener este archivo con los datos de países
 
 type FacultyModalProps = {
   facultyId: string;
   endpointUrl: string; // 🔹 Nueva prop
   onClose: () => void;
+};
+
+const getCountryData = (countryName: string) => {
+  return countries.find(
+    (c) =>
+      c.name_en.toLowerCase() === countryName.toLowerCase() ||
+      c.name_es.toLowerCase() === countryName.toLowerCase()
+  );
 };
 
 const FacultyModal: React.FC<FacultyModalProps> = ({
@@ -145,6 +154,7 @@ const FacultyModal: React.FC<FacultyModalProps> = ({
   const [faculty, setFaculty] = useState<FacultyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const countryData = faculty ? getCountryData(faculty.Country_Name) : null;
 
   useEffect(() => {
     const fetchFaculty = async () => {
@@ -204,13 +214,22 @@ const FacultyModal: React.FC<FacultyModalProps> = ({
                 alt={faculty.First_Name}
                 className="w-24 h-24 object-cover rounded-full ring-2 ring-blue-300"
               />
+
               <div>
                 <h2 className="text-xl font-bold text-gray-800">
                   {faculty.Prefix_Title} {faculty.First_Name}{" "}
                   {faculty.Family_Name} {faculty.Suffix_Title}
                 </h2>
-                <p className="text-sm text-gray-600">{faculty.Country_Name}</p>
-                <p className="text-sm text-blue-600">{faculty.EMail}</p>
+                {countryData && (
+                  <div className="flex items-center mt-1 text-sm text-gray-600">
+                    <img
+                      src={countryData.flag}
+                      alt={`Flag of ${countryData.name_en}`}
+                      className="w-5 h-4 object-contain mr-2"
+                    />
+                    <span>{faculty.Country_Name}</span>
+                  </div>
+                )}
               </div>
             </div>
 

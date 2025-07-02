@@ -102,6 +102,25 @@ export type Speaker = {
   Job_Title?: string;
 }
 
+export interface Authors {
+  Family_Name: string;
+  First_Name: string;
+  Author_Number: string;
+  Country_Name: string;
+  City: string;
+  Address_1: string;
+  Address_2: string;
+  Address_3: string;
+  Address_4: string;
+  Country_Code: string;
+  Presenting: string; // También podrías usar: "0" | "1" o boolean
+  Biography: string;
+  Image01: string;
+  Company: string;
+  AuthorID: string;
+}
+
+
 export type Abstract = {
   Abstract_ID: string;
   AbstractTitle: string;
@@ -119,7 +138,7 @@ export type Abstract = {
   AbstractNonPresentingAuthors: string;
   AbstractAllAffiliations: any[];
   AbstractAllAffiliationsList: string;
-  Authors: any[];
+  Authors: Authors[];
   AllAuthorsList: string;
 }
 
