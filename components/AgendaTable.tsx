@@ -273,6 +273,16 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
                     <div key={pIdx}>
                       <div className="text-sm font-medium text-blue-700 mb-1">
                         {presentation.Presentation_Title}
+                        <ul className="list-disc list-inside text-xs text-gray-600">
+                          {presentation.Abstract.Authors.map(
+                            (author: Authors, index: number) => (
+                              <li key={index}>
+                                {author.First_Name} {author.Family_Name} -{" "}
+                                {author.Country_Name} - {author.Company}
+                              </li>
+                            )
+                          )}
+                        </ul>
                       </div>
                       <div className="space-y-2">
                         {presentation.AllSpeakers.map((spk, i) => (
