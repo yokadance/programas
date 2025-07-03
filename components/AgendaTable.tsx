@@ -266,12 +266,12 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
 
             {/* Oradores */}
             <div className="text-sm text-gray-700">
-              <span className="font-medium">Oradores:</span>
               <div className="mt-1 space-y-3">
                 {session.Presentations?.length ? (
                   session.Presentations.map((presentation, pIdx) => (
                     <div key={pIdx}>
-                      <div className="text-sm font-medium text-blue-700 mb-1">
+                      <div className="text-sm font-medium text-blue-700 mb-1 ml-2 relative pl-6">
+                        <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
                         {presentation.Presentation_Title}
                         <ul className="list-disc list-inside text-xs text-gray-600">
                           {presentation.Abstract.Authors.map(
