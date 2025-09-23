@@ -24,7 +24,10 @@ type AgendaTableProps = {
   facultyEndpoint?: string; // Opcional, si se quiere usar otro endpoint
 };
 
-const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
+const AgendaTableEn: React.FC<AgendaTableProps> = ({
+  data,
+  facultyEndpoint,
+}) => {
   const days = Object.keys(data.Programme.Days);
   const [selectedDay, setSelectedDay] = useState(days[0]);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
@@ -113,7 +116,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
                 ? "bg-blue-600 text-white"
                 : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
             }`}>
-            Todas las salas
+            All rooms
           </button>
           {uniqueRooms.map((room) => (
             <button
@@ -136,8 +139,8 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
           <thead className="bg-blue-50 text-gray-700 uppercase text-xs tracking-wider sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 text-left">Hora</th>
-              <th className="px-4 py-3 text-left">Sesión</th>
-              <th className="px-4 py-3 text-left">Ubicación</th>
+              <th className="px-4 py-3 text-left">Session</th>
+              <th className="px-4 py-3 text-left">Room</th>
             </tr>
           </thead>
           <tbody>
@@ -256,7 +259,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
               {session.Session_Type}
             </div>
 
-            {/* Ubicación */}
+            {/* Room */}
             <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
               <MapPin className="w-4 h-4 text-blue-500" />
               {session.Session_Location || "—"}
@@ -327,4 +330,4 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
   );
 };
 
-export default AgendaTable;
+export default AgendaTableEn;
