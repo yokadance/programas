@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for programas-congresos on 2025-05-28T20:23:37-03:00
+# fly.toml app configuration file generated for programas-congresos on 2025-09-23T13:10:28-03:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
 app = 'programas-congresos'
-primary_region = 'gru'
+primary_region = 'scl'
 
 [build]
 

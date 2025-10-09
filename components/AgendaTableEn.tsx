@@ -21,7 +21,7 @@ import { Author } from "next/dist/lib/metadata/types/metadata-types";
 
 type AgendaTableProps = {
   data: ProgrammeData;
-  facultyEndpoint?: string; // Opcional, si se quiere usar otro endpoint
+  facultyEndpoint?: string;
 };
 
 const AgendaTableEn: React.FC<AgendaTableProps> = ({
@@ -73,7 +73,7 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
   const openSpeakerModal = (speaker: Speaker) => {
     console.log("Abriendo modal para speaker:", speaker.Faculty_Id);
 
-    setSelectedFacultyId(speaker.Faculty_Id); // o el campo que identifica al speaker para tu API
+    setSelectedFacultyId(speaker.Faculty_Id);
     setIsModalOpen(true);
   };
 
@@ -84,59 +84,65 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      {/* Botones de días */}
-      <div className="flex flex-wrap justify-center gap-3 mb-6">
-        {days.map((day) => (
-          <button
-            key={day}
-            onClick={() => {
-              setSelectedDay(day);
-              setSelectedRoom(null);
-            }}
-            className={`px-5 py-2.5 rounded-full text-sm font-medium transition ${
-              selectedDay === day
-                ? "bg-blue-600 text-white shadow"
-                : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-            }`}>
-            {new Date(data.Programme.Days[day].Date_String).toLocaleDateString(
-              "es-ES",
-              { weekday: "short", day: "2-digit", month: "short" }
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Filtro por sala */}
-      {uniqueRooms.length > 1 && (
-        <div className="flex flex-wrap justify-center gap-3 mb-8">
-          <button
-            onClick={() => setSelectedRoom(null)}
-            className={`px-4 py-1.5 text-sm rounded-full border ${
-              selectedRoom === null
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-            }`}>
-            All rooms
-          </button>
-          {uniqueRooms.map((room) => (
+      {/* Sticky Header con botones de días y filtro de salas */}
+      <div className="sticky top-0 z-50 bg-white pb-4 shadow-md">
+        {/* Botones de días */}
+        <div className="flex flex-wrap justify-center gap-3 mb-6 pt-4">
+          {days.map((day) => (
             <button
-              key={room}
-              onClick={() => setSelectedRoom(room)}
-              className={`px-4 py-1.5 text-sm rounded-full border ${
-                selectedRoom === room
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+              key={day}
+              onClick={() => {
+                setSelectedDay(day);
+                setSelectedRoom(null);
+              }}
+              className={`px-5 py-2.5 rounded-full text-sm font-medium transition ${
+                selectedDay === day
+                  ? "bg-blue-600 text-white shadow"
+                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
               }`}>
-              {room}
+              {new Date(
+                data.Programme.Days[day].Date_String
+              ).toLocaleDateString("en-EN", {
+                weekday: "short",
+                day: "2-digit",
+                month: "short",
+              })}
             </button>
           ))}
         </div>
-      )}
+
+        {/* Filtro por sala */}
+        {uniqueRooms.length > 1 && (
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              onClick={() => setSelectedRoom(null)}
+              className={`px-4 py-1.5 text-sm rounded-full border ${
+                selectedRoom === null
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+              }`}>
+              All rooms
+            </button>
+            {uniqueRooms.map((room) => (
+              <button
+                key={room}
+                onClick={() => setSelectedRoom(room)}
+                className={`px-4 py-1.5 text-sm rounded-full border ${
+                  selectedRoom === room
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}>
+                {room}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 🖥️ Vista de tabla */}
       <div className="overflow-x-auto rounded-xl shadow-lg ring-1 ring-gray-200 hidden md:block">
         <table className="min-w-full divide-y divide-gray-200 bg-white text-sm">
-          <thead className="bg-blue-50 text-gray-700 uppercase text-xs tracking-wider sticky top-0 z-10">
+          <thead className="bg-blue-50 text-gray-700 uppercase text-xs tracking-wider">
             <tr>
               <th className="px-4 py-3 text-left">Hora</th>
               <th className="px-4 py-3 text-left">Session</th>
@@ -231,7 +237,6 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
         </table>
       </div>
 
-      {/* 📱 Vista móvil */}
       {/* 📱 Vista móvil */}
       <div className="block md:hidden space-y-4">
         {sessions.map((session, index) => (

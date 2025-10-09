@@ -33,7 +33,7 @@ const ICP2025: React.FC = () => {
   }, []);
 
   if (loading)
-    return <Loader src="/loader/neurop.png" alt="Cargando..." size={128} />;
+    return <Loader src="/loader/icplogo.png" alt="Cargando..." size={128} />;
   if (error) return <p>Error: {error}</p>;
   console.log("Programa:", data);
   if (!data) return <p>No hay datos disponibles, data undefinded</p>;
