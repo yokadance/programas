@@ -131,6 +131,7 @@ export type Abstract = {
   AbstractTopic: string;
   AbstractTopicCodes: string;
   AbstractStatus: string;
+  AbstractAuthor: string;
   AbstractSessionTime: string;
   Online_Programme_Is_Viewable: string;
   AbstractAllAuthors: string;

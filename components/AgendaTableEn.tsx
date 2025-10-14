@@ -192,16 +192,27 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
 
                           <div className="ml-2 text-sm text-gray-800 font-medium">
                             {presentation.Presentation_Title}
-                            <ul className="list-disc list-inside text-xs text-gray-600">
-                              {presentation.Abstract.Authors.map(
-                                (author: Authors, index: number) => (
-                                  <li key={index}>
-                                    {author.First_Name} {author.Family_Name} -{" "}
-                                    {author.Country_Name} - {author.Company}
-                                  </li>
-                                )
-                              )}
-                            </ul>
+                            {presentation.Abstract.Authors.length > 0 && (
+                              <div className="mt-1 text-xs font-semibold text-blue-800 bg-blue-50 px-2 py-1 rounded inline-block">
+                                Presenting Author:{" "}
+                                {presentation.Abstract.Authors[0].First_Name}{" "}
+                                {presentation.Abstract.Authors[0].Family_Name} -{" "}
+                                {presentation.Abstract.Authors[0].Country_Name}{" "}
+                                - {presentation.Abstract.Authors[0].Company}
+                              </div>
+                            )}
+                            {presentation.Abstract.Authors.length > 1 && (
+                              <ul className="list-disc list-inside text-xs text-gray-600 mt-2">
+                                {presentation.Abstract.Authors.slice(1).map(
+                                  (author: Authors, index: number) => (
+                                    <li key={index}>
+                                      {author.First_Name} {author.Family_Name} -{" "}
+                                      {author.Country_Name} - {author.Company}
+                                    </li>
+                                  )
+                                )}
+                              </ul>
+                            )}
                           </div>
 
                           <ul className="mt-2 space-y-1 ml-2">
