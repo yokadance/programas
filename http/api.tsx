@@ -14,3 +14,7 @@ export const NEURO_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_
 //ICP
 export const ICP_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_ICP2025}/Programme/1/0/`;
 export const ICP_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_ICP2025}/Faculty/`;
+
+//CLATPU2026
+export const CLATPU2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CLATPU2026}/Programme/1/0/`;
+export const CLATPU2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CLATPU2026}/Faculty/`;

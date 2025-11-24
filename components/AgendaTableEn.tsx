@@ -13,6 +13,8 @@ import {
   Glasses,
   Martini,
   UtensilsCrossed,
+  BookOpen,
+  X,
 } from "lucide-react";
 
 import parse from "html-react-parser";
@@ -70,6 +72,22 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
     null
   );
 
+  const [selectedPresentation, setSelectedPresentation] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
+  const [isPresentationModalOpen, setIsPresentationModalOpen] = useState(false);
+
+  const openPresentationModal = (title: string, body: string) => {
+    setSelectedPresentation({ title, body });
+    setIsPresentationModalOpen(true);
+  };
+
+  const closePresentationModal = () => {
+    setSelectedPresentation(null);
+    setIsPresentationModalOpen(false);
+  };
+
   const openSpeakerModal = (speaker: Speaker) => {
     console.log("Abriendo modal para speaker:", speaker.Faculty_Id);
 
@@ -84,10 +102,10 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      {/* Sticky Header con botones de días y filtro de salas */}
-      <div className="sticky top-0 z-50 bg-white pb-4 shadow-md">
+      {/* Sticky Header SOLO para días */}
+      <div className="sticky top-0 z-50 bg-white pb-4 shadow-md mb-6">
         {/* Botones de días */}
-        <div className="flex flex-wrap justify-center gap-3 mb-6 pt-4">
+        <div className="flex flex-wrap justify-center gap-3 pt-4">
           {days.map((day) => (
             <button
               key={day}
@@ -110,34 +128,34 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Filtro por sala */}
-        {uniqueRooms.length > 1 && (
-          <div className="flex flex-wrap justify-center gap-3">
+      {/* Filtro por sala (NO sticky) */}
+      {uniqueRooms.length > 1 && (
+        <div className="flex flex-wrap justify-center gap-3 mb-9 pb-4 bg-white">
+          <button
+            onClick={() => setSelectedRoom(null)}
+            className={`px-4 py-1.5 text-sm rounded-full border ${
+              selectedRoom === null
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+            }`}>
+            All rooms
+          </button>
+          {uniqueRooms.map((room) => (
             <button
-              onClick={() => setSelectedRoom(null)}
+              key={room}
+              onClick={() => setSelectedRoom(room)}
               className={`px-4 py-1.5 text-sm rounded-full border ${
-                selectedRoom === null
+                selectedRoom === room
                   ? "bg-blue-600 text-white"
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
               }`}>
-              All rooms
+              {room}
             </button>
-            {uniqueRooms.map((room) => (
-              <button
-                key={room}
-                onClick={() => setSelectedRoom(room)}
-                className={`px-4 py-1.5 text-sm rounded-full border ${
-                  selectedRoom === room
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                }`}>
-                {room}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* 🖥️ Vista de tabla */}
       <div className="overflow-x-auto rounded-xl shadow-lg ring-1 ring-gray-200 hidden md:block">
@@ -170,7 +188,7 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
                   {session.Session_Chair && (
                     <div className="flex items-center text-sm text-gray-600 mb-3">
                       <UserRound className="w-4 h-4 mr-2 text-blue-400" />
-                      Coordina y modera:
+                      Chairperson:
                       <span className="ml-1 text-blue-700 font-medium">
                         {session.Session_Chair}
                       </span>
@@ -190,10 +208,32 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
                             <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
                           )}
 
-                          <div className="ml-2 text-sm text-gray-800 font-medium">
-                            {presentation.Presentation_Title}
+                          <div className="ml-2 text-sm text-gray-800 font-bold">
+                            <div className="flex items-center gap-2">
+                              <span>{presentation.Presentation_Title}</span>
+                              {presentation.Presentation_Body && (
+                                <button
+                                  onClick={() =>
+                                    openPresentationModal(
+                                      presentation.Presentation_Title,
+                                      presentation.Presentation_Body
+                                    )
+                                  }
+                                  className="relative group text-blue-600 hover:text-blue-800 transition-all hover:scale-110"
+                                  title="Ver resumen">
+                                  <BookOpen className="w-4 h-4 animate-pulse" />
+                                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                  </span>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                    Click to read
+                                  </span>
+                                </button>
+                              )}
+                            </div>
                             {presentation.Abstract.Authors.length > 0 && (
-                              <div className="mt-1 text-xs font-semibold text-blue-800 bg-blue-50 px-2 py-1 rounded inline-block">
+                              <div className="mt-2 text-xs font-semibold text-blue-800 bg-blue-50 px-2 py-1 rounded w-fit">
                                 Presenting Author:{" "}
                                 {presentation.Abstract.Authors[0].First_Name}{" "}
                                 {presentation.Abstract.Authors[0].Family_Name} -{" "}
@@ -285,7 +325,7 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
             {session.Session_Chair && (
               <div className="flex items-center gap-2 text-sm text-blue-700 font-medium mb-3">
                 <UserRound className="w-4 h-4" />
-                Coordina y modera: <span>{session.Session_Chair}</span>
+                Chairperson: <span>{session.Session_Chair}</span>
               </div>
             )}
 
@@ -293,40 +333,80 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
             <div className="text-sm text-gray-700">
               <div className="mt-1 space-y-3">
                 {session.Presentations?.length ? (
-                  session.Presentations.map((presentation, pIdx) => (
-                    <div key={pIdx}>
-                      <div className="text-sm font-medium text-blue-700 mb-1 ml-2 relative pl-6">
-                        <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
-                        {presentation.Presentation_Title}
-                        <ul className="list-disc list-inside text-xs text-gray-600">
-                          {presentation.Abstract.Authors.map(
-                            (author: Authors, index: number) => (
-                              <li key={index}>
-                                {author.First_Name} {author.Family_Name} -{" "}
-                                {author.Country_Name} - {author.Company}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                      <div className="space-y-2">
-                        {presentation.AllSpeakers.map((spk, i) => (
-                          <div key={i} className="flex items-center gap-3">
-                            <img
-                              src={spk.Image01 || "/user-avatar.png"}
-                              alt={spk.Full_Name}
-                              className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-300"
-                            />
-                            <button
-                              onClick={() => openSpeakerModal(spk)}
-                              className="text-blue-700 hover:underline text-left">
-                              {spk.Full_Name}
-                            </button>
+                  session.Presentations.map((presentation, pIdx) => {
+                    // Usar Abstract si Presentation está vacío
+                    const title =
+                      presentation.Presentation_Title ||
+                      presentation?.Abstract_Title;
+                    const body =
+                      presentation.Presentation_Body ||
+                      presentation?.Abstract_Body;
+
+                    return (
+                      <div key={pIdx}>
+                        <div className="text-sm text-blue-700 mb-1 ml-2 relative pl-6">
+                          <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold">{title}</span>
+                            {body && (
+                              <button
+                                onClick={() =>
+                                  openPresentationModal(title, body)
+                                }
+                                className="relative group text-blue-600 hover:text-blue-800 transition-all hover:scale-110 flex-shrink-0"
+                                title="Ver resumen">
+                                <BookOpen className="w-4 h-4 animate-pulse" />
+                                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                </span>
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                  Click to read
+                                </span>
+                              </button>
+                            )}
                           </div>
-                        ))}
+                          {presentation.Abstract.Authors.length > 0 && (
+                            <div className="mt-2 text-xs font-semibold text-blue-800 bg-blue-50 px-2 py-1 rounded w-fit">
+                              Presenting Author:{" "}
+                              {presentation.Abstract.Authors[0].First_Name}{" "}
+                              {presentation.Abstract.Authors[0].Family_Name} -{" "}
+                              {presentation.Abstract.Authors[0].Country_Name} -{" "}
+                              {presentation.Abstract.Authors[0].Company}
+                            </div>
+                          )}
+                          {presentation.Abstract.Authors.length > 1 && (
+                            <ul className="list-disc list-inside text-xs text-gray-600 mt-2">
+                              {presentation.Abstract.Authors.slice(1).map(
+                                (author: Authors, index: number) => (
+                                  <li key={index}>
+                                    {author.First_Name} {author.Family_Name} -{" "}
+                                    {author.Country_Name} - {author.Company}
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          {presentation.AllSpeakers.map((spk, i) => (
+                            <div key={i} className="flex items-center gap-3">
+                              <img
+                                src={spk.Image01 || "/user-avatar.png"}
+                                alt={spk.Full_Name}
+                                className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-300"
+                              />
+                              <button
+                                onClick={() => openSpeakerModal(spk)}
+                                className="text-blue-700 hover:underline text-left">
+                                {spk.Full_Name}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <span className="italic text-gray-500">—</span>
                 )}
@@ -341,6 +421,51 @@ const AgendaTableEn: React.FC<AgendaTableProps> = ({
           endpointUrl={facultyEndpoint ?? ""}
           onClose={closeSpeakerModal}
         />
+      )}
+
+      {/* Modal de Presentación */}
+      {isPresentationModalOpen && selectedPresentation && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={closePresentationModal}>
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="sticky top-0 bg-blue-600 text-white p-6 rounded-t-xl flex justify-between items-start">
+              <div className="flex items-start gap-3 flex-1">
+                <BookOpen className="w-6 h-6 flex-shrink-0 mt-1" />
+                <h2 className="text-xl font-bold">
+                  {selectedPresentation.title}
+                </h2>
+              </div>
+              <button
+                onClick={closePresentationModal}
+                className="text-white hover:bg-blue-700 rounded-full p-2 transition flex-shrink-0">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <div
+                className="prose prose-sm max-w-none text-gray-700"
+                dangerouslySetInnerHTML={{
+                  __html: selectedPresentation.body,
+                }}
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-xl border-t">
+              <button
+                onClick={closePresentationModal}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

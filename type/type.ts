@@ -78,6 +78,9 @@ export type Room = {
 
 export type Presentation = {
   Presentation_Id: string;
+  Presentation_Body: string;
+  Abstract_Title: string;
+  Abstract_Body: string;
   Presentation_Title: string;
   Start_Time: string;
   Sequence_Number: string;
