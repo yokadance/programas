@@ -1,4 +1,4 @@
-import { ABU_PROGRAMME, CLATPU2026_PROGRAMME } from "@/http/api";
+import { CLATPU2026_PROGRAMME } from "@/http/api";
 import { ProgrammeData } from "@/type/type";
 import React, { useEffect, useState } from "react";
 import Header from "../../../components/Header";
