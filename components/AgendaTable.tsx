@@ -182,17 +182,40 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
                           )}
 
                           <div className="ml-2 text-sm text-gray-800 font-medium">
+                            {presentation.Start_Time && presentation.Start_Time !== "00:00" && (
+                              <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mb-1 mr-2">
+                                <Clock className="w-3 h-3" />
+                                {presentation.Start_Time}
+                              </span>
+                            )}
                             {presentation.Presentation_Title}
-                            <ul className="list-disc list-inside text-xs text-gray-600">
-                              {presentation.Abstract.Authors.map(
-                                (author: Authors, index: number) => (
-                                  <li key={index}>
-                                    {author.First_Name} {author.Family_Name} -{" "}
-                                    {author.Country_Name} - {author.Company}
-                                  </li>
-                                )
-                              )}
-                            </ul>
+                            {presentation.Abstract.Authors.length > 0 && (() => {
+                              const presentingAuthor = presentation.Abstract.Authors.find(
+                                (a: Authors) => a.Presenting === "1"
+                              ) || presentation.Abstract.Authors[0];
+                              const otherAuthors = presentation.Abstract.Authors.filter(
+                                (a: Authors) => a !== presentingAuthor
+                              );
+                              return (
+                                <>
+                                  <div className="mt-2 text-xs font-semibold text-blue-800 bg-blue-50 px-2 py-1 rounded w-fit">
+                                    Presentador: {presentingAuthor.First_Name}{" "}
+                                    {presentingAuthor.Family_Name} -{" "}
+                                    {presentingAuthor.Country_Name} - {presentingAuthor.Company}
+                                  </div>
+                                  {otherAuthors.length > 0 && (
+                                    <ul className="list-disc list-inside text-xs text-gray-600 mt-2">
+                                      {otherAuthors.map((author: Authors, index: number) => (
+                                        <li key={index}>
+                                          {author.First_Name} {author.Family_Name} -{" "}
+                                          {author.Country_Name} - {author.Company}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
 
                           <ul className="mt-2 space-y-1 ml-2">
@@ -278,17 +301,40 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
                     <div key={pIdx}>
                       <div className="text-sm font-medium text-blue-700 mb-1 ml-2 relative pl-6">
                         <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
+                        {presentation.Start_Time && presentation.Start_Time !== "00:00" && (
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mb-1 mr-2">
+                            <Clock className="w-3 h-3" />
+                            {presentation.Start_Time}
+                          </span>
+                        )}
                         {presentation.Presentation_Title}
-                        <ul className="list-disc list-inside text-xs text-gray-600">
-                          {presentation.Abstract.Authors.map(
-                            (author: Authors, index: number) => (
-                              <li key={index}>
-                                {author.First_Name} {author.Family_Name} -{" "}
-                                {author.Country_Name} - {author.Company}
-                              </li>
-                            )
-                          )}
-                        </ul>
+                        {presentation.Abstract.Authors.length > 0 && (() => {
+                          const presentingAuthor = presentation.Abstract.Authors.find(
+                            (a: Authors) => a.Presenting === "1"
+                          ) || presentation.Abstract.Authors[0];
+                          const otherAuthors = presentation.Abstract.Authors.filter(
+                            (a: Authors) => a !== presentingAuthor
+                          );
+                          return (
+                            <>
+                              <div className="mt-2 text-xs font-semibold text-blue-800 bg-blue-50 px-2 py-1 rounded w-fit">
+                                Presentador: {presentingAuthor.First_Name}{" "}
+                                {presentingAuthor.Family_Name} -{" "}
+                                {presentingAuthor.Country_Name} - {presentingAuthor.Company}
+                              </div>
+                              {otherAuthors.length > 0 && (
+                                <ul className="list-disc list-inside text-xs text-gray-600 mt-2">
+                                  {otherAuthors.map((author: Authors, index: number) => (
+                                    <li key={index}>
+                                      {author.First_Name} {author.Family_Name} -{" "}
+                                      {author.Country_Name} - {author.Company}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                       <div className="space-y-2">
                         {presentation.AllSpeakers.map((spk, i) => (
