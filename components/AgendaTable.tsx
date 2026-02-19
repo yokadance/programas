@@ -161,14 +161,16 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
                   {session.Session_Chair && (
                     <div className="flex items-center text-sm text-gray-600 mb-3">
                       <UserRound className="w-4 h-4 mr-2 text-blue-400" />
-                      Coordina y modera:
+                      Modera/Presenta:
                       <span className="ml-1 text-blue-700 font-medium">
                         {session.Session_Chair}
                       </span>
                     </div>
                   )}
                   <div className="space-y-3 mt-3 px-1">
-                    {session.Presentations?.map((presentation, pIdx) => (
+                    {session.Presentations?.slice().sort((a, b) =>
+                      a.Start_Time.localeCompare(b.Start_Time) || a.Sequence_Number.localeCompare(b.Sequence_Number)
+                    ).map((presentation, pIdx) => (
                       <div
                         key={pIdx}
                         className={`pl-4 relative ${
@@ -289,7 +291,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
             {session.Session_Chair && (
               <div className="flex items-center gap-2 text-sm text-blue-700 font-medium mb-3">
                 <UserRound className="w-4 h-4" />
-                Coordina y modera: <span>{session.Session_Chair}</span>
+                Modera/Presenta: <span>{session.Session_Chair}</span>
               </div>
             )}
 
@@ -297,7 +299,9 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint }) => {
             <div className="text-sm text-gray-700">
               <div className="mt-1 space-y-3">
                 {session.Presentations?.length ? (
-                  session.Presentations.map((presentation, pIdx) => (
+                  session.Presentations.slice().sort((a, b) =>
+                    a.Start_Time.localeCompare(b.Start_Time) || a.Sequence_Number.localeCompare(b.Sequence_Number)
+                  ).map((presentation, pIdx) => (
                     <div key={pIdx}>
                       <div className="text-sm font-medium text-blue-700 mb-1 ml-2 relative pl-6">
                         <ArrowRight className="absolute left-0 top-1 w-4 h-4 text-blue-500" />
