@@ -147,6 +147,18 @@ export type Abstract = {
 }
 
 
+export type AgendaTheme = {
+  primaryBg: string;
+  primaryText: string;
+  titleText: string;
+  iconColor: string;
+  lightBg: string;
+  lightBorder: string;
+  badgeText: string;
+  headerBg: string;
+  chairIconColor: string;
+};
+
 // types.ts
 export interface FacultyAssignment {
   Session_Id: string;

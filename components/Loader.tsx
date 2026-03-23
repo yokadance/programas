@@ -1,45 +1,32 @@
 import React from "react";
 
 type LoaderProps = {
-  src: string;
+  src?: string;
   alt?: string;
   size?: number;
+  fallbackSrc?: string;
+  text?: string;
 };
 
-const Loader: React.FC<LoaderProps> = ({
-  src,
-  alt = "Cargando...",
-  size = 128,
-}) => {
+const Loader: React.FC<LoaderProps> = ({ text = "Cargando..." }) => {
   return (
-    <div
-      className="fixed inset-0 flex justify-center items-center"
-      style={{ perspective: "600px" }}>
-      <img
-        src={src}
-        alt={alt}
-        width={size}
-        height={size}
-        className="animate-flip"
-        style={{ backfaceVisibility: "hidden", transformStyle: "preserve-3d" }}
-      />
-      <style jsx>{`
-        @keyframes flip {
-          0% {
-            transform: rotateY(0deg);
-          }
-          100% {
-            transform: rotateY(360deg);
-          }
-        }
-        .animate-flip {
-          animation: flip 1.5s linear infinite;
-          transform-style: preserve-3d;
-          backface-visibility: hidden;
-        }
-      `}</style>
+    <div className="fixed inset-0 flex flex-col justify-center items-center gap-3 bg-white">
+      <LoadingDots />
+      <p className="text-sm text-gray-500 font-medium">{text}</p>
     </div>
   );
 };
+
+const LoadingDots: React.FC = () => (
+  <div className="flex gap-1.5">
+    {[0, 1, 2].map((i) => (
+      <span
+        key={i}
+        className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+        style={{ animationDelay: `${i * 0.15}s` }}
+      />
+    ))}
+  </div>
+);
 
 export default Loader;

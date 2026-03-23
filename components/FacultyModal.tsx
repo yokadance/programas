@@ -48,7 +48,7 @@
 //   }
 
 //   return (
-//     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+//     <div className="fixed inset-0 backdrop-blur-sm bg-white/30 z-50 flex items-center justify-center p-4">
 //       <div className="relative bg-white max-w-2xl w-full rounded-xl shadow-xl overflow-auto max-h-[90vh] p-6">
 //         <button
 //           onClick={onClose}
@@ -178,7 +178,7 @@ const FacultyModal: React.FC<FacultyModalProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+      <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-white/30 z-50">
         <div className="bg-white p-6 rounded-xl shadow-xl">
           <p className="text-center text-sm text-gray-700">Cargando datos...</p>
         </div>
@@ -187,7 +187,7 @@ const FacultyModal: React.FC<FacultyModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 backdrop-blur-sm bg-white/30 z-50 flex items-center justify-center p-4">
       <div className="relative bg-white max-w-2xl w-full rounded-xl shadow-xl overflow-auto max-h-[90vh] p-6">
         <button
           onClick={onClose}

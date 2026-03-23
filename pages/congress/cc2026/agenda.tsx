@@ -30,7 +30,7 @@ const CC2026Agenda: React.FC = () => {
   }, []);
 
   if (loading)
-    return <Loader src="/loader/logocc.png" alt="Cargando agenda..." size={256} />;
+    return <Loader src="/loader/logocc.png" alt="Cargando agenda..." size={200} />;
   if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
   if (!data) return <p className="p-6 text-gray-500">No hay datos disponibles</p>;
 
@@ -38,6 +38,9 @@ const CC2026Agenda: React.FC = () => {
     <AgendaCalendar
       data={data}
       facultyEndpoint={CC2026_FACULTY}
+      agendaHref="/congress/cc2026/agenda"
+      speakersHref="/congress/cc2026/speakers"
+      logoSrc="/loader/logo-cc.png"
       theme={{
         primaryBg: "bg-[#7B1535]",
         primaryText: "text-[#7B1535]",

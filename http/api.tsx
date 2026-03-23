@@ -18,3 +18,6 @@ export const ICP_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_IC
 //CLATPU2026
 export const CLATPU2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CLATPU2026}/Programme/1/0/`;
 export const CLATPU2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CLATPU2026}/Faculty/`;
+//CC2026
+export const CC2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CC2026}/Programme/1/0/`;
+export const CC2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CC2026}/Faculty/`;
