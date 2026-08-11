@@ -1,39 +1,117 @@
-import React, { useState } from "react";
-import { Session, Speaker, AgendaTheme } from "@/type/type";
+import React, { useState, useEffect } from "react";
+import { Session, Speaker, AgendaTheme, Faculty } from "@/type/type";
 import { X, Clock, UserRound, MapPin, ArrowRight } from "lucide-react";
 import FacultyModal from "./FacultyModal";
+import { getCountryLabel } from "@/utils/countryLabel";
+import { useFacultyTitles } from "@/hooks/useFacultyTitles";
+
+const titlePattern = /^(Dr|Dra|Prof|Lic|Mg|PhD)[\.\s]/i;
+
+const formatFacultyName = (f: Faculty, titlesMap?: Map<string, string>) => {
+  const alreadyHasTitle = titlePattern.test(f.First_Name?.trim() || "");
+  const prefix = !alreadyHasTitle
+    ? (f.Prefix_Title || (f.Faculty_Id ? titlesMap?.get(f.Faculty_Id) : undefined) || "")
+    : "";
+  return `${prefix ? prefix + " " : ""}${f.First_Name} ${f.Family_Name}`.trim();
+};
+
+const getSpeakerName = (spk: Speaker, titlesMap?: Map<string, string>): string => {
+  if (titlePattern.test(spk.First_Name?.trim() || "")) {
+    return `${spk.First_Name} ${spk.Family_Name}`;
+  }
+  const prefix = spk.Prefix_Title || (spk.Faculty_Id ? titlesMap?.get(spk.Faculty_Id) : undefined);
+  if (prefix) {
+    return `${prefix} ${spk.First_Name} ${spk.Family_Name}`;
+  }
+  if (spk.Full_Name && titlePattern.test(spk.Full_Name.trim())) {
+    return spk.Full_Name;
+  }
+  return `${spk.First_Name} ${spk.Family_Name}`;
+};
+
+const formatNameString = (str: string | null | undefined): string | null => {
+  if (!str) return null;
+  const parts = str.split(/[;,]/).map((p) => p.trim()).filter(Boolean);
+  const unique = [...new Set(parts)];
+  unique.sort((a, b) => {
+    const lastA = a.split(/\s+/).at(-1) ?? a;
+    const lastB = b.split(/\s+/).at(-1) ?? b;
+    return lastA.localeCompare(lastB, "es", { sensitivity: "base" });
+  });
+  return unique.join(", ") || null;
+};
+
+const formatChairs = (faculty: Faculty[], chairStr: string | null, titlesMap?: Map<string, string>) => {
+  if (faculty && faculty.length > 0) {
+    return faculty
+      .slice()
+      .sort((a, b) => a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" }))
+      .map((f) => formatFacultyName(f, titlesMap))
+      .join(", ");
+  }
+  return formatNameString(chairStr);
+};
 
 type SessionDetailModalProps = {
   session: Session;
   theme: AgendaTheme;
   facultyEndpoint?: string;
+  sessionEndpoint?: (sessionId: string) => string;
   onClose: () => void;
+  /** Nombres de disertantes/moderadores en negro en vez del color del tema (mejora legibilidad con temas muy saturados). */
+  neutralText?: boolean;
+  /**
+   * Muestra "Presidente - Moderador/a" (Session_Chair) y "Secretario/a"
+   * (Session_CoChair) como líneas separadas, en vez de un único "Modera"
+   * que mezcla Session_Faculty/Session_Chair.
+   */
+  splitChairRoles?: boolean;
 };
 
 const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
   session,
   theme,
   facultyEndpoint,
+  sessionEndpoint,
   onClose,
+  neutralText,
+  splitChairRoles,
 }) => {
-  const [selectedFacultyId, setSelectedFacultyId] = useState<string | null>(
-    null,
-  );
+  const [selectedFacultyId, setSelectedFacultyId] = useState<string | null>(null);
+  const [sessionDetail, setSessionDetail] = useState<Session>(session);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const titlesMap = useFacultyTitles(facultyEndpoint);
+  const NAME_COLOR = neutralText ? "text-gray-900" : theme.primaryText;
+
+  useEffect(() => {
+    const fetchSessionDetail = async () => {
+      if (!sessionEndpoint || sessionDetail.Session_HTML) return;
+
+      setLoadingDetail(true);
+      try {
+        const response = await fetch(sessionEndpoint(session.Session_Id));
+        if (response.ok) {
+          const data = await response.json();
+          const detail = Array.isArray(data) ? data[0] : data;
+          setSessionDetail((prev) => ({ ...prev, Session_HTML: detail?.Session_HTML }));
+        }
+      } catch (error) {
+        console.error("Error fetching session detail:", error);
+      } finally {
+        setLoadingDetail(false);
+      }
+    };
+
+    fetchSessionDetail();
+  }, [session.Session_Id, sessionEndpoint, sessionDetail.Session_HTML]);
 
   const sortedPresentations =
-    session.Presentations?.slice().sort(
+    sessionDetail.Presentations?.slice().sort(
       (a, b) =>
         a.Start_Time.localeCompare(b.Start_Time) ||
         a.Sequence_Number.localeCompare(b.Sequence_Number),
     ) ?? [];
 
-  const cleanChairName = (chair: string) => {
-    const parts = chair
-      .split(",")
-      .map((p) => p.trim())
-      .filter(Boolean);
-    return [...new Set(parts)].join(", ");
-  };
 
   return (
     <>
@@ -58,7 +136,7 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
       <div className="backdrop-fade fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
       {/* Bottom sheet */}
-      <div className="sheet-slide-up fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col md:inset-0 md:m-auto md:rounded-2xl md:max-w-2xl md:max-h-[90vh]">
+      <div className="sheet-slide-up fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col md:inset-0 md:m-auto md:h-fit md:w-fit md:rounded-2xl md:max-w-2xl md:max-h-[90vh]">
         {/* Drag handle (mobile only) */}
         <div className="flex justify-center pt-3 pb-1 md:hidden">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
@@ -85,22 +163,88 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
 
               {/* Title */}
               <h2
-                className={`text-base font-bold ${theme.titleText} leading-snug`}>
-                {session.Session_Title}
+                className={`text-base font-bold ${theme.titleText} leading-none`}>
+                {sessionDetail.Session_Title}
               </h2>
 
-              {/* Chair */}
-              {session.Session_Chair && (
-                <div
-                  className={`mt-2 inline-flex items-center gap-1.5 text-xs ${theme.lightBg} border ${theme.lightBorder} rounded-full px-3 py-1`}>
-                  <UserRound
-                    className={`w-3 h-3 ${theme.chairIconColor} flex-shrink-0`}
-                  />
-                  <span className="text-gray-500">Modera:</span>
-                  <span className={`${theme.primaryText} font-semibold`}>
-                    {cleanChairName(session.Session_Chair)}
-                  </span>
+              {/* Session Description / Summary */}
+              {loadingDetail && !sessionDetail.Session_HTML && (
+                <div className="mt-2 text-sm text-gray-400 italic">
+                  Cargando resumen...
                 </div>
+              )}
+              {(sessionDetail.Session_HTML || sessionDetail.Session_Notes) && (
+                <div className="mt-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                    Resumen
+                  </span>
+                  <div className="text-[11px] text-gray-500 leading-none">
+                    {sessionDetail.Session_HTML ? (
+                      <div
+                        className="max-w-none [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                        dangerouslySetInnerHTML={{ __html: sessionDetail.Session_HTML }}
+                      />
+                    ) : (
+                      <p>{sessionDetail.Session_Notes}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Chair */}
+              {splitChairRoles ? (
+                (() => {
+                  const president = formatNameString(sessionDetail.Session_Chair);
+                  const secretary = formatNameString(sessionDetail.Session_CoChair);
+                  if (!president && !secretary) return null;
+                  return (
+                    <div className="mt-2 flex flex-col gap-1 items-start">
+                      {president && (
+                        <div
+                          className={`inline-flex items-center gap-1.5 text-xs ${theme.lightBg} border ${theme.lightBorder} rounded-full px-3 py-1`}>
+                          <UserRound
+                            className={`w-3 h-3 ${theme.chairIconColor} flex-shrink-0`}
+                          />
+                          <span className="text-gray-500 leading-none">
+                            Presidente - Moderador/a:
+                          </span>
+                          <span className={`${NAME_COLOR} font-semibold leading-none`}>
+                            {president}
+                          </span>
+                        </div>
+                      )}
+                      {secretary && (
+                        <div
+                          className={`inline-flex items-center gap-1.5 text-xs ${theme.lightBg} border ${theme.lightBorder} rounded-full px-3 py-1`}>
+                          <UserRound
+                            className={`w-3 h-3 ${theme.chairIconColor} flex-shrink-0`}
+                          />
+                          <span className="text-gray-500 leading-none">Secretario/a:</span>
+                          <span className={`${NAME_COLOR} font-semibold leading-none`}>
+                            {secretary}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                (() => {
+                  const chairs = formatChairs(sessionDetail.Session_Faculty ?? [], sessionDetail.Session_Chair, titlesMap);
+                  if (!chairs) return null;
+                  return (
+                    <div
+                      className={`mt-2 inline-flex items-center gap-1.5 text-xs ${theme.lightBg} border ${theme.lightBorder} rounded-full px-3 py-1`}>
+                      <UserRound
+                        className={`w-3 h-3 ${theme.chairIconColor} flex-shrink-0`}
+                      />
+                      <span className="text-gray-500 leading-none">Modera:</span>
+                      <span className={`${NAME_COLOR} font-semibold leading-none`}>
+                        {chairs}
+                      </span>
+                    </div>
+                  );
+                })()
               )}
             </div>
 
@@ -138,7 +282,7 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                     <ArrowRight
                       className={`w-4 h-4 ${theme.iconColor} mt-0.5 flex-shrink-0`}
                     />
-                    <p className="text-sm text-gray-800 font-medium leading-snug">
+                    <p className="text-sm text-gray-800 font-medium leading-none">
                       {presentation.Presentation_Title || (
                         <span className="text-gray-400 italic">Sin título</span>
                       )}
@@ -148,7 +292,9 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                   {/* Speakers */}
                   {presentation.AllSpeakers?.length > 0 && (
                     <div className="mt-2.5 pl-6 space-y-2">
-                      {presentation.AllSpeakers.map(
+                      {presentation.AllSpeakers.slice()
+                        .sort((a, b) => a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" }))
+                        .map(
                         (spk: Speaker, i: number) => (
                           <button
                             key={i}
@@ -161,14 +307,13 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                             />
                             <div>
                               <p
-                                className={`text-sm font-semibold ${theme.primaryText} group-hover:underline`}>
-                                {spk.Full_Name}
+                                className={`text-sm font-semibold leading-none ${NAME_COLOR} group-hover:underline`}>
+                                {(() => {
+                                  const name = getSpeakerName(spk, titlesMap);
+                                  const country = getCountryLabel(spk.Country_Name);
+                                  return country ? `${name} (${country})` : name;
+                                })()}
                               </p>
-                              {spk.Country_Name && (
-                                <p className="text-xs text-gray-400">
-                                  {spk.Country_Name}
-                                </p>
-                              )}
                             </div>
                           </button>
                         ),

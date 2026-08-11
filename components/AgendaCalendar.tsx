@@ -6,7 +6,7 @@ import BottomNav from "./BottomNav";
 import { generateAgendaPDF, isBreak, parseDate } from "@/utils/generateAgendaPDF";
 
 // --- Layout constants ---
-const PX_PER_MIN = 2;
+const DEFAULT_PX_PER_MIN = 2;
 const TIME_COL_W = 52;
 const HEADER_H = 44;
 const HOUR_LABEL_OFFSET = 8;
@@ -15,6 +15,35 @@ const DESKTOP_ROOM_W = 175;
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + (m || 0);
+}
+
+// Tamaño de letra único para todas las tarjetas del cronograma (evita que
+// bloques de la misma duración se vean con tipografías distintas). Sólo se
+// reduce como último recurso, cuando ni siquiera el crecimiento seguro de la
+// tarjeta (hasta el inicio de la próxima sesión de la sala) alcanza.
+const FIXED_TITLE_FONT = 11;
+const FIXED_TITLE_LINE_H = 13;
+const TITLE_FONT_FALLBACKS = [11, 10, 9, 8];
+
+function estimateLines(title: string, widthPx: number, fontSize: number): number {
+  const avgCharWidth = fontSize * 0.58;
+  const charsPerLine = Math.max(4, Math.floor(widthPx / avgCharWidth));
+  return Math.max(1, Math.ceil(title.length / charsPerLine));
+}
+
+function fitTitleFont(
+  title: string,
+  widthPx: number,
+  availableH: number,
+): { fontSize: number; lineHeight: number; lines: number } {
+  let fallback = { fontSize: 8, lineHeight: 10, lines: 1 };
+  for (const fontSize of TITLE_FONT_FALLBACKS) {
+    const lineHeight = fontSize + 2;
+    const lines = estimateLines(title, widthPx, fontSize);
+    fallback = { fontSize, lineHeight, lines };
+    if (lines * lineHeight <= availableH) return fallback;
+  }
+  return fallback; // ninguno entró perfecto: usar el más chico como mejor esfuerzo
 }
 
 
@@ -33,21 +62,69 @@ const defaultTheme: AgendaTheme = {
 type AgendaCalendarProps = {
   data: ProgrammeData;
   facultyEndpoint?: string;
+  sessionEndpoint?: (sessionId: string) => string;
   theme?: Partial<AgendaTheme>;
   agendaHref?: string;
   speakersHref?: string;
+  /** Logo chico mostrado junto al selector de días (ver `headerImages` para un cabezal ancho con texto). */
   logoSrc?: string;
+  /**
+   * Cabezal a todo el ancho, arriba del selector de días — pensado para banners
+   * con logo + fecha/sede/organizador (donde `logoSrc` a 40px de alto queda
+   * ilegible). Si se pasa, reemplaza a `logoSrc`.
+   */
+  headerImages?: { src: string; alt: string; className?: string }[];
+  pdfOptions?: import("@/utils/generateAgendaPDF").GeneratePDFOptions;
+  /** Alto de cada minuto en px. Reducir para achicar visualmente las franjas horarias. */
+  pxPerMin?: number;
+  /**
+   * Títulos (regex) que deben mostrarse dentro de su propia sala en vez de
+   * como banda transversal (ej: coffee break, tiempo libre). El resto de los
+   * títulos detectados por `isBreak` se siguen mostrando como transversales,
+   * abarcando únicamente las salas donde efectivamente existe esa sesión.
+   */
+  roomScopedBreakPattern?: RegExp;
+  /** Texto de aviso mostrado arriba del todo (ej: "Programa preliminar, sujeto a cambios"). */
+  preliminaryNotice?: string;
+  /**
+   * Colores (hex) asignados round-robin a cada sala, en el orden de `roomsOrdered`
+   * (que respeta `pdfOptions.roomOrder` cuando está presente). Permite distinguir
+   * salas de un vistazo sin depender de un único color de tema.
+   */
+  roomColors?: string[];
+  /** Nombres de disertantes/moderadores en negro en el modal de detalle, en vez del color del tema. */
+  neutralText?: boolean;
+  /** En el modal de detalle, separa Chair (Presidente-Moderador/a) y Co-Chair (Secretario/a) en vez de un único "Modera". */
+  splitChairRoles?: boolean;
 };
 
 const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   data,
   facultyEndpoint,
+  sessionEndpoint,
   theme: themeProp,
   agendaHref,
   speakersHref,
   logoSrc,
+  pdfOptions,
+  pxPerMin,
+  roomScopedBreakPattern,
+  preliminaryNotice,
+  roomColors,
+  neutralText,
+  splitChairRoles,
 }) => {
   const theme: AgendaTheme = { ...defaultTheme, ...themeProp };
+  const PX_PER_MIN = pxPerMin ?? DEFAULT_PX_PER_MIN;
+
+  const isRoomScopedBreak = useCallback(
+    (title: string) => roomScopedBreakPattern?.test(title) ?? false,
+    [roomScopedBreakPattern],
+  );
+  const isTransversalBreak = useCallback(
+    (title: string) => isBreak(title) && !isRoomScopedBreak(title),
+    [isRoomScopedBreak],
+  );
 
   const days = Object.keys(data.Programme.Days);
   const [selectedDay, setSelectedDay] = useState(days[0]);
@@ -78,11 +155,33 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
     data.Programme.Days[selectedDay].Session_Groups,
   ).flatMap((g) => g.Sessions);
 
-  const roomsOrdered: string[] = [];
-  allSessions.forEach((s) => {
-    const loc = s.Session_Location?.trim() || "General";
-    if (!roomsOrdered.includes(loc)) roomsOrdered.push(loc);
-  });
+  const roomsOrdered = (() => {
+    const rooms = Array.from(
+      new Set(allSessions.map((s) => s.Session_Location?.trim() || "General"))
+    );
+    const order = pdfOptions?.roomOrder;
+    if (order && order.length > 0) {
+      return rooms.sort((a, b) => {
+        const ia = order.indexOf(a);
+        const ib = order.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b, "es", { sensitivity: "base" });
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+    }
+    return rooms.sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+  })();
+
+  const getRoomColor = useCallback(
+    (room: string): string | undefined => {
+      if (!roomColors || roomColors.length === 0) return undefined;
+      const idx = roomsOrdered.indexOf(room);
+      if (idx === -1) return undefined;
+      return roomColors[idx % roomColors.length];
+    },
+    [roomColors, roomsOrdered],
+  );
 
   const roomColW = (() => {
     if (!containerW) return DESKTOP_ROOM_W;
@@ -91,6 +190,32 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
     const available = containerW - TIME_COL_W;
     const dynamic = Math.floor(available / roomsOrdered.length);
     return Math.max(220, dynamic);
+  })();
+
+  // --- Transversal breaks: group same title+horario, abarcando sólo las
+  // salas donde esa sesión realmente existe (ej: cocktail que no ocurre en
+  // todas las salas queda acotado a las columnas correspondientes) ---
+  const transversalGroups = (() => {
+    const groups = new Map<
+      string,
+      { session: Session; minIdx: number; maxIdx: number }
+    >();
+    allSessions
+      .filter((s) => isTransversalBreak(s.Session_Title))
+      .forEach((s) => {
+        const room = s.Session_Location?.trim() || "General";
+        const idx = roomsOrdered.indexOf(room);
+        if (idx === -1) return;
+        const key = `${s.Session_Title}|${s.Session_Start_Time}|${s.Session_End_Time}`;
+        const existing = groups.get(key);
+        if (existing) {
+          existing.minIdx = Math.min(existing.minIdx, idx);
+          existing.maxIdx = Math.max(existing.maxIdx, idx);
+        } else {
+          groups.set(key, { session: s, minIdx: idx, maxIdx: idx });
+        }
+      });
+    return Array.from(groups.values());
   })();
 
   // --- Scroll arrows ---
@@ -130,14 +255,8 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
 
   // --- PDF generation ---
   const handlePrint = useCallback(async () => {
-    await generateAgendaPDF(data, {
-      coverImagePath: "/portadas/portada-cc.jpg",
-      title: "AGENDA",
-      subtitle: "42° Congreso Uruguayo de Cardiología  •  CardioSUC 2026",
-      filename: "agenda-cardiosuc2026.pdf",
-      footerText: "CARDIOSUC 2026  •  AGENDA OFICIAL",
-    });
-  }, [data]);
+    await generateAgendaPDF(data, pdfOptions ?? {});
+  }, [data, pdfOptions]);
 
   return (
     <div
@@ -230,6 +349,15 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
         ))}
       </div>
 
+      {/* ── Aviso de programa preliminar ── */}
+      {preliminaryNotice && (
+        <div className="flex-shrink-0 flex items-center justify-center py-1 bg-amber-100 border-b border-amber-200">
+          <span className="text-[10px] font-bold tracking-wide text-amber-800 uppercase">
+            {preliminaryNotice}
+          </span>
+        </div>
+      )}
+
       {/* ── Day selector ── */}
       <div className="flex-shrink-0 flex items-center bg-white shadow-sm border-b border-gray-100">
         <div className="flex gap-2 px-4 py-3 overflow-x-auto flex-1">
@@ -269,7 +397,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
           <img
             src={logoSrc}
             alt="logo"
-            className="flex-shrink-0 h-10 w-auto object-contain pr-3"
+            className="flex-shrink-0 h-[68px] w-auto object-contain pr-3"
           />
         )}
       </div>
@@ -322,22 +450,33 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                     />
                   </div>
                 </div>
-                {roomsOrdered.map((room) => (
-                  <div
-                    key={room}
-                    className={`flex-shrink-0 flex items-center justify-center px-2 border-b border-r last:border-r-0 border-gray-200 ${theme.headerBg}`}
-                    style={{ width: roomColW }}>
-                    <span
-                      className={`text-[11px] font-bold ${theme.primaryText} text-center uppercase tracking-wide leading-tight`}>
-                      {room}
-                    </span>
-                  </div>
-                ))}
+                {roomsOrdered.map((room) => {
+                  const roomColor = getRoomColor(room);
+                  return (
+                    <div
+                      key={room}
+                      className={`flex-shrink-0 flex items-center justify-center px-2 border-b border-r last:border-r-0 border-gray-200 ${roomColor ? "" : theme.headerBg}`}
+                      style={{
+                        width: roomColW,
+                        ...(roomColor
+                          ? {
+                              backgroundColor: `${roomColor}1A`,
+                              borderTop: `3px solid ${roomColor}`,
+                            }
+                          : {}),
+                      }}>
+                      <span
+                        className={`text-[11px] font-bold ${roomColor ? "text-gray-800" : theme.primaryText} text-center uppercase tracking-wide leading-tight`}>
+                        {room}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* ── Content: time + sessions ── */}
-            <div className="flex">
+            <div className="flex relative">
               <div
                 className="flex-shrink-0 sticky left-0 z-20 bg-gray-50 border-r border-gray-200"
                 style={{ width: TIME_COL_W }}>
@@ -359,77 +498,200 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                 </div>
               </div>
 
-              {roomsOrdered.map((room) => {
-                const roomSessions = allSessions.filter(
-                  (s) => (s.Session_Location?.trim() || "General") === room,
-                );
-                return (
-                  <div
-                    key={room}
-                    className="flex-shrink-0 border-r last:border-r-0 border-gray-200"
-                    style={{ width: roomColW }}>
+              {/* Rooms container */}
+              <div className="flex flex-1 relative">
+                {roomsOrdered.map((room) => {
+                  const roomColor = getRoomColor(room);
+                  const roomSessions = allSessions
+                    .filter(
+                      (s) =>
+                        !isTransversalBreak(s.Session_Title) &&
+                        (s.Session_Location?.trim() || "General") === room,
+                    )
+                    .sort(
+                      (a, b) =>
+                        timeToMinutes(a.Session_Start_Time) -
+                        timeToMinutes(b.Session_Start_Time),
+                    );
+                  // Próximo inicio en la misma sala: tope seguro para poder
+                  // agrandar una tarjeta sin invadir la siguiente sesión.
+                  const nextStartById = new Map<string, number>();
+                  roomSessions.forEach((s, i) => {
+                    const next = roomSessions[i + 1];
+                    nextStartById.set(
+                      s.Session_Id,
+                      next ? timeToMinutes(next.Session_Start_Time) : endMin,
+                    );
+                  });
+                  return (
                     <div
-                      className="relative bg-white"
-                      style={{ height: gridH }}>
-                      {hours.map((t) => (
-                        <div
-                          key={t}
-                          className="absolute w-full border-t border-gray-100"
-                          style={{ top: (t - baseMin) * PX_PER_MIN }}
-                        />
-                      ))}
-                      {hours.slice(0, -1).map((t) => (
-                        <div
-                          key={`${t}-half`}
-                          className="absolute w-full border-t border-gray-50"
-                          style={{ top: (t - baseMin + 30) * PX_PER_MIN }}
-                        />
-                      ))}
-                      {roomSessions.map((session) => {
-                        const start = timeToMinutes(session.Session_Start_Time);
-                        const end = timeToMinutes(session.Session_End_Time);
-                        const top = (start - baseMin) * PX_PER_MIN;
-                        const height = Math.max((end - start) * PX_PER_MIN, 36);
-                        const breakSession = isBreak(session.Session_Title);
-                        const hasPresentations =
-                          (session.Presentations?.length ?? 0) > 0;
-                        return (
-                          <button
-                            key={session.Session_Id}
-                            onClick={() => setSelectedSession(session)}
-                            className={`absolute inset-x-1 rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:brightness-95 shadow-sm ${
-                              breakSession
-                                ? "bg-amber-50 border border-amber-200"
-                                : `${theme.lightBg} border ${theme.lightBorder}`
-                            }`}
-                            style={{ top: top + 2, height: height - 4 }}>
-                            <div className="p-1.5 flex flex-col h-full">
-                              <span
-                                className={`text-[10px] font-bold leading-none mb-0.5 ${breakSession ? "text-amber-600" : theme.primaryText}`}>
-                                {session.Session_Start_Time}
-                              </span>
-                              <span
-                                className={`text-[11px] font-semibold leading-tight flex-1 ${breakSession ? "text-amber-900" : "text-gray-800"} line-clamp-4`}>
-                                {session.Session_Title}
-                              </span>
-                              {hasPresentations && height > 50 && (
+                      key={room}
+                      className="flex-shrink-0 border-r last:border-r-0 border-gray-200"
+                      style={{ width: roomColW }}>
+                      <div
+                        className="relative bg-white"
+                        style={{ height: gridH }}>
+                        {hours.map((t) => (
+                          <div
+                            key={t}
+                            className="absolute w-full border-t border-gray-100"
+                            style={{ top: (t - baseMin) * PX_PER_MIN }}
+                          />
+                        ))}
+                        {hours.slice(0, -1).map((t) => (
+                          <div
+                            key={`${t}-half`}
+                            className="absolute w-full border-t border-gray-50"
+                            style={{ top: (t - baseMin + 30) * PX_PER_MIN }}
+                          />
+                        ))}
+                        {roomSessions.map((session) => {
+                          const start = timeToMinutes(session.Session_Start_Time);
+                          const end = timeToMinutes(session.Session_End_Time);
+                          const top = (start - baseMin) * PX_PER_MIN;
+                          const titleWidthPx = roomColW - 20; // inset-x-1 + padding
+                          const hasPresentations =
+                            (session.Presentations?.length ?? 0) > 0;
+
+                          // Alto natural (según duración) y alto deseado para que el
+                          // título entre completo con la tipografía fija (uniforme).
+                          const naturalH = (end - start) * PX_PER_MIN;
+                          const linesAtFixedFont = estimateLines(
+                            session.Session_Title,
+                            titleWidthPx,
+                            FIXED_TITLE_FONT,
+                          );
+                          const neededH =
+                            14 /* padding */ +
+                            14 /* fila de horario */ +
+                            linesAtFixedFont * FIXED_TITLE_LINE_H +
+                            (hasPresentations ? 17 : 0);
+                          // Tope: no invadir la siguiente sesión de la misma sala.
+                          const maxSafeH =
+                            (nextStartById.get(session.Session_Id)! - start) *
+                            PX_PER_MIN;
+                          // El tope nunca debe superar maxSafeH (invadiría la
+                          // siguiente sesión): un piso de 36 aquí, en vez de en
+                          // el propio maxSafeH, generaba superposición visual
+                          // cuando dos sesiones de la misma sala están a menos
+                          // de 36px de distancia (franjas cortas y seguidas).
+                          const height = Math.min(
+                            Math.max(naturalH, 36, neededH),
+                            Math.max(maxSafeH, 16),
+                          );
+
+                          const availableForTitle = height - 4 - 28;
+                          const fit = fitTitleFont(
+                            session.Session_Title,
+                            titleWidthPx,
+                            availableForTitle,
+                          );
+                          const titleBlockH = fit.lines * fit.lineHeight;
+                          const showBadge =
+                            hasPresentations &&
+                            availableForTitle - titleBlockH >= 14;
+                          // Breaks (coffee, almuerzo, tiempo libre, etc.) no abren el modal:
+                          // no tienen contenido propio que mostrar en el detalle.
+                          const isBreakSession =
+                            isBreak(session.Session_Title) ||
+                            isRoomScopedBreak(session.Session_Title);
+                          if (isBreakSession) {
+                            return (
+                              <div
+                                key={session.Session_Id}
+                                className="absolute inset-x-1 rounded-xl overflow-hidden shadow-sm bg-amber-50 border border-amber-200"
+                                style={{ top: top + 2, height: height - 4 }}>
+                                <div className="p-1.5 flex flex-col items-center justify-center h-full">
+                                  <span className="text-[10px] font-bold leading-none mb-0.5 text-amber-600">
+                                    {session.Session_Start_Time}
+                                  </span>
+                                  <span
+                                    className="font-semibold text-amber-900 text-center"
+                                    style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
+                                    {session.Session_Title}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <button
+                              key={session.Session_Id}
+                              onClick={() => setSelectedSession(session)}
+                              className={`absolute inset-x-1 rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-sm ${roomColor ? "bg-white border" : `${theme.lightBg} border ${theme.lightBorder}`}`}
+                              style={{
+                                top: top + 2,
+                                height: height - 4,
+                                ...(roomColor
+                                  ? {
+                                      borderColor: `${roomColor}55`,
+                                      borderLeft: `3px solid ${roomColor}`,
+                                    }
+                                  : {}),
+                              }}>
+                              <div className="p-1.5 flex flex-col items-center justify-center text-center h-full">
                                 <span
-                                  className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium ${theme.badgeText} opacity-80`}>
-                                  <Users className="w-2.5 h-2.5" />
-                                  {session.Presentations.length} charla
-                                  {session.Presentations.length !== 1
-                                    ? "s"
-                                    : ""}
+                                  className={`text-[10px] font-bold leading-none mb-0.5 ${roomColor ? "text-gray-500" : theme.primaryText}`}>
+                                  {session.Session_Start_Time}
                                 </span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
+                                <span
+                                  className={`font-semibold ${roomColor ? "text-gray-800" : theme.titleText} cursor-pointer hover:underline`}
+                                  style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
+                                  {session.Session_Title}
+                                </span>
+                                {showBadge && (
+                                  <span
+                                    className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium opacity-80 ${roomColor ? "text-gray-500" : theme.badgeText}`}>
+                                    <Users className="w-2.5 h-2.5" />
+                                    {session.Presentations.length} charla
+                                    {session.Presentations.length !== 1
+                                      ? "s"
+                                      : ""}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+
+                {/* Transversal breaks layer */}
+                {transversalGroups.map(({ session, minIdx, maxIdx }) => {
+                    const start = timeToMinutes(session.Session_Start_Time);
+                    const end = timeToMinutes(session.Session_End_Time);
+                    const top = (start - baseMin) * PX_PER_MIN;
+                    const spanWidth = (maxIdx - minIdx + 1) * roomColW - 8;
+                    const height = Math.max((end - start) * PX_PER_MIN, 36);
+                    const availableForTitle = height - 4 - 24;
+                    const fit = fitTitleFont(session.Session_Title, spanWidth - 12, availableForTitle);
+                    return (
+                      <button
+                        key={session.Session_Id}
+                        onClick={() => setSelectedSession(session)}
+                        className="absolute rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-md bg-amber-50 border border-amber-200 z-10"
+                        style={{
+                          left: minIdx * roomColW + 4,
+                          width: spanWidth,
+                          top: top + 2,
+                          height: height - 4,
+                        }}>
+                        <div className="p-1.5 flex flex-col items-center justify-center h-full">
+                          <span className="text-[10px] font-bold leading-none mb-0.5 text-amber-600">
+                            {session.Session_Start_Time}
+                          </span>
+                          <span
+                            className="font-semibold text-amber-900 text-center cursor-pointer hover:underline"
+                            style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
+                            {session.Session_Title}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
           </div>
         </div>
@@ -452,7 +714,10 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
           session={selectedSession}
           theme={theme}
           facultyEndpoint={facultyEndpoint}
+          sessionEndpoint={sessionEndpoint}
           onClose={() => setSelectedSession(null)}
+          neutralText={neutralText}
+          splitChairRoles={splitChairRoles}
         />
       )}
     </div>

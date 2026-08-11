@@ -1,4 +1,4 @@
-import { CC2026_FACULTY } from "@/http/api";
+import { ALAG2026_FACULTY } from "@/http/api";
 import { getCountryLabel } from "@/utils/countryLabel";
 import { FacultyData } from "@/type/type";
 import React, { useEffect, useState } from "react";
@@ -8,11 +8,11 @@ import BottomNav from "@/components/BottomNav";
 import { Search } from "lucide-react";
 
 const THEME = {
-  primaryBg: "bg-[#7B1535]",
-  primaryText: "text-[#7B1535]",
+  primaryBg: "bg-[#083E84]",
+  primaryText: "text-[#083E84]",
 };
 
-const CC2026Speakers: React.FC = () => {
+const ALAG2026Speakers: React.FC = () => {
   const [faculty, setFaculty] = useState<FacultyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,15 +22,19 @@ const CC2026Speakers: React.FC = () => {
   useEffect(() => {
     const fetchFaculty = async () => {
       try {
-        const res = await fetch(CC2026_FACULTY);
+        const res = await fetch(ALAG2026_FACULTY);
         if (!res.ok) {
           setError("Error al obtener los speakers");
           return;
         }
         const data = await res.json();
-        const list: FacultyData[] = Array.isArray(data) ? data : data.Faculty ?? [];
+        const list: FacultyData[] = Array.isArray(data)
+          ? data
+          : (data.Faculty ?? []);
         list.sort((a, b) =>
-          a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" })
+          a.Family_Name.localeCompare(b.Family_Name, "es", {
+            sensitivity: "base",
+          }),
         );
         setFaculty(list);
       } catch {
@@ -52,12 +56,13 @@ const CC2026Speakers: React.FC = () => {
   });
 
   if (loading)
-    return <Loader src="/loader/logocc.png" alt="Cargando speakers..." size={256} />;
+    return (
+      <Loader src="/loader/alag.png" alt="Cargando speakers..." size={256} />
+    );
   if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
 
   return (
     <div className="flex flex-col bg-gray-50" style={{ height: "100dvh" }}>
-
       {/* Search bar */}
       <div className="flex-shrink-0 px-4 py-3 bg-white border-b border-gray-100 shadow-sm">
         <div className="relative">
@@ -67,7 +72,7 @@ const CC2026Speakers: React.FC = () => {
             placeholder="Buscar speaker..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-100 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7B1535]/30"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-100 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#5f95a0]/30"
           />
         </div>
       </div>
@@ -75,7 +80,9 @@ const CC2026Speakers: React.FC = () => {
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 mt-10">Sin resultados</p>
+          <p className="text-center text-sm text-gray-400 mt-10">
+            Sin resultados
+          </p>
         ) : (
           <ul className="divide-y divide-gray-100">
             {filtered.map((f) => (
@@ -93,10 +100,13 @@ const CC2026Speakers: React.FC = () => {
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">
-                      {f.Prefix_Title ? `${f.Prefix_Title} ` : ""}{f.First_Name} {f.Family_Name}
+                      {f.Prefix_Title ? `${f.Prefix_Title} ` : ""}
+                      {f.First_Name} {f.Family_Name}
                     </p>
                     {getCountryLabel(f.Country_Name) && (
-                      <p className="text-xs text-gray-400 truncate">{getCountryLabel(f.Country_Name)}</p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {getCountryLabel(f.Country_Name)}
+                      </p>
                     )}
                   </div>
                 </button>
@@ -108,8 +118,8 @@ const CC2026Speakers: React.FC = () => {
 
       {/* Bottom nav */}
       <BottomNav
-        agendaHref="/congress/cc2026/agenda"
-        speakersHref="/congress/cc2026/speakers"
+        agendaHref="/congress/alag2026/agenda"
+        speakersHref="/congress/alag2026/speakers"
         primaryBg={THEME.primaryBg}
         primaryText={THEME.primaryText}
       />
@@ -118,7 +128,7 @@ const CC2026Speakers: React.FC = () => {
       {selectedId && (
         <FacultyModal
           facultyId={selectedId}
-          endpointUrl={CC2026_FACULTY}
+          endpointUrl={ALAG2026_FACULTY}
           onClose={() => setSelectedId(null)}
         />
       )}
@@ -126,4 +136,4 @@ const CC2026Speakers: React.FC = () => {
   );
 };
 
-export default CC2026Speakers;
+export default ALAG2026Speakers;

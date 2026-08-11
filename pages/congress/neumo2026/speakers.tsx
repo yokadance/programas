@@ -1,4 +1,4 @@
-import { CC2026_FACULTY } from "@/http/api";
+import { NEUMO2026_FACULTY } from "@/http/api";
 import { getCountryLabel } from "@/utils/countryLabel";
 import { FacultyData } from "@/type/type";
 import React, { useEffect, useState } from "react";
@@ -8,11 +8,11 @@ import BottomNav from "@/components/BottomNav";
 import { Search } from "lucide-react";
 
 const THEME = {
-  primaryBg: "bg-[#7B1535]",
-  primaryText: "text-[#7B1535]",
+  primaryBg: "bg-[#5f95a0]",
+  primaryText: "text-[#5f95a0]",
 };
 
-const CC2026Speakers: React.FC = () => {
+const NEUMO2026Speakers: React.FC = () => {
   const [faculty, setFaculty] = useState<FacultyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ const CC2026Speakers: React.FC = () => {
   useEffect(() => {
     const fetchFaculty = async () => {
       try {
-        const res = await fetch(CC2026_FACULTY);
+        const res = await fetch(NEUMO2026_FACULTY);
         if (!res.ok) {
           setError("Error al obtener los speakers");
           return;
@@ -52,7 +52,7 @@ const CC2026Speakers: React.FC = () => {
   });
 
   if (loading)
-    return <Loader src="/loader/logocc.png" alt="Cargando speakers..." size={256} />;
+    return <Loader src="/loader/logo-neumo.webp" alt="Cargando speakers..." size={256} />;
   if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
 
   return (
@@ -67,7 +67,7 @@ const CC2026Speakers: React.FC = () => {
             placeholder="Buscar speaker..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-100 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7B1535]/30"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-100 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#5f95a0]/30"
           />
         </div>
       </div>
@@ -108,8 +108,8 @@ const CC2026Speakers: React.FC = () => {
 
       {/* Bottom nav */}
       <BottomNav
-        agendaHref="/congress/cc2026/agenda"
-        speakersHref="/congress/cc2026/speakers"
+        agendaHref="/congress/neumo2026/agenda"
+        speakersHref="/congress/neumo2026/speakers"
         primaryBg={THEME.primaryBg}
         primaryText={THEME.primaryText}
       />
@@ -118,7 +118,7 @@ const CC2026Speakers: React.FC = () => {
       {selectedId && (
         <FacultyModal
           facultyId={selectedId}
-          endpointUrl={CC2026_FACULTY}
+          endpointUrl={NEUMO2026_FACULTY}
           onClose={() => setSelectedId(null)}
         />
       )}
@@ -126,4 +126,4 @@ const CC2026Speakers: React.FC = () => {
   );
 };
 
-export default CC2026Speakers;
+export default NEUMO2026Speakers;

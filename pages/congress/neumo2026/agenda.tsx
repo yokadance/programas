@@ -1,10 +1,10 @@
-import { CC2026_PROGRAMME, CC2026_FACULTY } from "@/http/api";
+import { NEUMO2026_PROGRAMME, NEUMO2026_FACULTY } from "@/http/api";
 import { ProgrammeData } from "@/type/type";
 import React, { useEffect, useState } from "react";
 import AgendaCalendar from "@/components/AgendaCalendar";
 import Loader from "@/components/Loader";
 
-const CC2026Agenda: React.FC = () => {
+const NEUMO2026Agenda: React.FC = () => {
   const [data, setData] = useState<ProgrammeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +12,7 @@ const CC2026Agenda: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(CC2026_PROGRAMME);
+        const res = await fetch(NEUMO2026_PROGRAMME);
         if (!res.ok) {
           setError("Error al obtener los datos del programa");
           setLoading(false);
@@ -30,38 +30,40 @@ const CC2026Agenda: React.FC = () => {
   }, []);
 
   if (loading)
-    return <Loader src="/loader/logocc.png" alt="Cargando agenda..." size={200} />;
+    return (
+      <Loader src="/loader/logocc.png" alt="Cargando agenda..." size={200} />
+    );
   if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
-  if (!data) return <p className="p-6 text-gray-500">No hay datos disponibles</p>;
+  if (!data)
+    return <p className="p-6 text-gray-500">No hay datos disponibles</p>;
 
   return (
     <AgendaCalendar
       data={data}
-      facultyEndpoint={CC2026_FACULTY}
-      agendaHref="/congress/cc2026/agenda"
-      speakersHref="/congress/cc2026/speakers"
-      logoSrc="/loader/logo-cc.png"
+      facultyEndpoint={NEUMO2026_FACULTY}
+      agendaHref="/congress/neumo2026/agenda"
+      speakersHref="/congress/neumo2026/speakers"
+      logoSrc="/loader/logo-neumo.webp"
       pdfOptions={{
-        coverImagePath: "/portadas/portada-cc.jpg",
         title: "AGENDA",
-        subtitle: "42° Congreso Uruguayo de Cardiología  •  CardioSUC 2026",
-        filename: "agenda-cardiosuc2026.pdf",
-        footerText: "CARDIOSUC 2026  •  AGENDA OFICIAL",
+        subtitle: "Neumología 2026",
+        footerText: "NEUMO 2026  •  AGENDA OFICIAL",
         roomOrder: ["Ballroom A", "Conference", "Picasso / Florida", "Renoir"],
+        facultyEndpoint: NEUMO2026_FACULTY,
       }}
       theme={{
-        primaryBg: "bg-[#7B1535]",
-        primaryText: "text-[#7B1535]",
-        titleText: "text-[#4A0E22]",
-        iconColor: "text-[#7B1535]",
-        lightBg: "bg-[#F9EDF1]",
-        lightBorder: "border-[#E8C4CE]",
-        badgeText: "text-[#5C1028]",
-        headerBg: "bg-[#F9EDF1]",
-        chairIconColor: "text-[#9B3555]",
+        primaryBg: "bg-[#5f95a0]",
+        primaryText: "text-[#5f95a0]",
+        titleText: "text-[#3A6970]",
+        iconColor: "text-[#5f95a0]",
+        lightBg: "bg-[#EBF4F6]",
+        lightBorder: "border-[#C5DDE1]",
+        badgeText: "text-[#3A6970]",
+        headerBg: "bg-[#EBF4F6]",
+        chairIconColor: "text-[#7AADB8]",
       }}
     />
   );
 };
 
-export default CC2026Agenda;
+export default NEUMO2026Agenda;
