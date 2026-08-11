@@ -44,7 +44,7 @@ const ALAG2026: React.FC = () => {
       footerText: "ALAG 2026  •  AGENDA OFICIAL",
       roomOrder: ["Ballroom A", "Conference", "Picasso / Florida", "Renoir"],
       facultyEndpoint: ALAG2026_FACULTY,
-      excludeDayDates: ["Tue 20 Oct 2026"],
+      excludeDayDates: ["Mon 19 Oct 2026", "Tue 20 Oct 2026"],
     });
   };
 

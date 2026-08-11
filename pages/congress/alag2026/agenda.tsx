@@ -60,7 +60,7 @@ const ALAG2026Agenda: React.FC = () => {
           "SESIÓN DE POSTERS",
         ],
         facultyEndpoint: ALAG2026_FACULTY,
-        excludeDayDates: ["Tue 20 Oct 2026"],
+        excludeDayDates: ["Mon 19 Oct 2026", "Tue 20 Oct 2026"],
       }}
       // 1 hora = 6 líneas de título (13px c/u): 30 min ~ 3 líneas, 60 min ~ 6 líneas
       pxPerMin={(13 * 6) / 60}
