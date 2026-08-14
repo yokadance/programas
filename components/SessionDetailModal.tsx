@@ -29,15 +29,23 @@ const getSpeakerName = (spk: Speaker, titlesMap?: Map<string, string>): string =
   return `${spk.First_Name} ${spk.Family_Name}`;
 };
 
-const formatNameString = (str: string | null | undefined): string | null => {
+const formatNameString = (
+  str: string | null | undefined,
+  opts: { sort?: boolean } = {},
+): string | null => {
   if (!str) return null;
   const parts = str.split(/[;,]/).map((p) => p.trim()).filter(Boolean);
   const unique = [...new Set(parts)];
-  unique.sort((a, b) => {
-    const lastA = a.split(/\s+/).at(-1) ?? a;
-    const lastB = b.split(/\s+/).at(-1) ?? b;
-    return lastA.localeCompare(lastB, "es", { sensitivity: "base" });
-  });
+  // Por defecto se alfabetiza (comportamiento histórico del "Modera:" único).
+  // Para Chair/Co-Chair separados se respeta el orden de ShockLogic: ahí el
+  // orden es intencional (ej: presidente primero), no alfabético.
+  if (opts.sort ?? true) {
+    unique.sort((a, b) => {
+      const lastA = a.split(/\s+/).at(-1) ?? a;
+      const lastB = b.split(/\s+/).at(-1) ?? b;
+      return lastA.localeCompare(lastB, "es", { sensitivity: "base" });
+    });
+  }
   return unique.join(", ") || null;
 };
 
@@ -194,8 +202,8 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
               {/* Chair */}
               {splitChairRoles ? (
                 (() => {
-                  const president = formatNameString(sessionDetail.Session_Chair);
-                  const secretary = formatNameString(sessionDetail.Session_CoChair);
+                  const president = formatNameString(sessionDetail.Session_Chair, { sort: false });
+                  const secretary = formatNameString(sessionDetail.Session_CoChair, { sort: false });
                   if (!president && !secretary) return null;
                   return (
                     <div className="mt-2 flex flex-col gap-1 items-start">

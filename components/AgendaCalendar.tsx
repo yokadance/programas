@@ -96,6 +96,10 @@ type AgendaCalendarProps = {
   neutralText?: boolean;
   /** En el modal de detalle, separa Chair (Presidente-Moderador/a) y Co-Chair (Secretario/a) en vez de un único "Modera". */
   splitChairRoles?: boolean;
+  /** Muestra el campo `Session_Type` de SL entre el horario y el título de cada tarjeta. */
+  showSessionType?: boolean;
+  /** Oculta el badge de "N charlas" que se muestra debajo del título de cada tarjeta. */
+  hideTalkCountBadge?: boolean;
 };
 
 const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
@@ -113,6 +117,8 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   roomColors,
   neutralText,
   splitChairRoles,
+  showSessionType,
+  hideTalkCountBadge,
 }) => {
   const theme: AgendaTheme = { ...defaultTheme, ...themeProp };
   const PX_PER_MIN = pxPerMin ?? DEFAULT_PX_PER_MIN;
@@ -552,6 +558,11 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                           const titleWidthPx = roomColW - 20; // inset-x-1 + padding
                           const hasPresentations =
                             (session.Presentations?.length ?? 0) > 0;
+                          const sessionTypeLabel =
+                            showSessionType && session.Session_Type?.trim()
+                              ? session.Session_Type.trim()
+                              : null;
+                          const SESSION_TYPE_H = sessionTypeLabel ? 13 : 0;
 
                           // Alto natural (según duración) y alto deseado para que el
                           // título entre completo con la tipografía fija (uniforme).
@@ -564,8 +575,9 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                           const neededH =
                             14 /* padding */ +
                             14 /* fila de horario */ +
+                            SESSION_TYPE_H +
                             linesAtFixedFont * FIXED_TITLE_LINE_H +
-                            (hasPresentations ? 17 : 0);
+                            (hasPresentations && !hideTalkCountBadge ? 17 : 0);
                           // Tope: no invadir la siguiente sesión de la misma sala.
                           const maxSafeH =
                             (nextStartById.get(session.Session_Id)! - start) *
@@ -580,7 +592,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                             Math.max(maxSafeH, 16),
                           );
 
-                          const availableForTitle = height - 4 - 28;
+                          const availableForTitle = height - 4 - 28 - SESSION_TYPE_H;
                           const fit = fitTitleFont(
                             session.Session_Title,
                             titleWidthPx,
@@ -588,6 +600,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                           );
                           const titleBlockH = fit.lines * fit.lineHeight;
                           const showBadge =
+                            !hideTalkCountBadge &&
                             hasPresentations &&
                             availableForTitle - titleBlockH >= 14;
                           // Breaks (coffee, almuerzo, tiempo libre, etc.) no abren el modal:
@@ -634,6 +647,11 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                                   className={`text-[10px] font-bold leading-none mb-0.5 ${roomColor ? "text-gray-500" : theme.primaryText}`}>
                                   {session.Session_Start_Time}
                                 </span>
+                                {sessionTypeLabel && (
+                                  <span className="text-[9px] font-semibold uppercase tracking-wide leading-none mb-0.5 text-gray-400">
+                                    {sessionTypeLabel}
+                                  </span>
+                                )}
                                 <span
                                   className={`font-semibold ${roomColor ? "text-gray-800" : theme.titleText} cursor-pointer hover:underline`}
                                   style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>

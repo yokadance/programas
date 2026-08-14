@@ -54,7 +54,7 @@ const GINE2026Agenda: React.FC = () => {
         title: "AGENDA",
         subtitle: "GINECOLOGÍA 2026",
         footerText: "GINECOLOGÍA 2026  •  AGENDA OFICIAL",
-        roomOrder: ["Auditorio 3", "Auditorio 4", "Jagüel 1", "Jagüel 2", "Foyer"],
+        roomOrder: ["Auditorio 4", "Auditorio 3", "Jagüel 1", "Jagüel 2", "Foyer"],
         facultyEndpoint: GINE2026_FACULTY,
         accentColor: [207, 47, 129],
       }}
@@ -62,6 +62,8 @@ const GINE2026Agenda: React.FC = () => {
       roomColors={["#CF2F81", "#5DC0CC", "#A94A95", "#D25420"]}
       neutralText
       splitChairRoles
+      showSessionType
+      hideTalkCountBadge
       theme={{
         primaryBg: "bg-[#CF2F81]",
         primaryText: "text-[#CF2F81]",
