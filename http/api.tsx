@@ -41,3 +41,8 @@ export const GASTRO2026_SESSION = (sessionId: string) => `${SHOKLOGIC_URL}/${pro
 export const GINE2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_GINE2026}/Programme/1/0/`;
 export const GINE2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_GINE2026}/Faculty/`;
 export const GINE2026_SESSION = (sessionId: string) => `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_GINE2026}/Sessions/${sessionId}`;
+
+//CIRU2026
+export const CIRU2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CIRU2026}/Programme/1/0/`;
+export const CIRU2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CIRU2026}/Faculty/`;
+export const CIRU2026_SESSION = (sessionId: string) => `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CIRU2026}/Sessions/${sessionId}`;

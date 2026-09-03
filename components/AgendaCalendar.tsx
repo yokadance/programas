@@ -100,6 +100,25 @@ type AgendaCalendarProps = {
   showSessionType?: boolean;
   /** Oculta el badge de "N charlas" que se muestra debajo del título de cada tarjeta. */
   hideTalkCountBadge?: boolean;
+  /** Muestra horario de inicio y fin ("HH:MM – HH:MM") en la tarjeta en vez de solo el inicio. */
+  showTimeRange?: boolean;
+  /**
+   * Reglas de color por contenido de la sesión (tipo, duración, etc.), evaluadas
+   * en orden — la primera que matchee define el color de la tarjeta. Tiene
+   * prioridad sobre `roomColors`; si ninguna matchea, se usa `roomColors` (si
+   * está) o el theme por defecto.
+   */
+  cardColorRules?: { test: (session: Session) => boolean; color: string }[];
+  /**
+   * Sesiones cuyo `Session_Type` (o título, si no hay tipo) matchea este patrón
+   * se dibujan como una única franja a todo el ancho de la grilla (todas las
+   * salas), sin importar en qué sala esté cargada en SL — pensado para eventos
+   * que pausan todo el congreso (posters, cocktails, cenas, coffee breaks,
+   * conferencias plenarias). La franja va DEBAJO de las tarjetas de sesiones
+   * reales: donde una sala tiene una sesión real en simultáneo, esa sesión se
+   * ve encima y la franja no la tapa.
+   */
+  fullWidthPattern?: RegExp;
 };
 
 const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
@@ -119,10 +138,18 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   splitChairRoles,
   showSessionType,
   hideTalkCountBadge,
+  showTimeRange,
+  cardColorRules,
+  fullWidthPattern,
 }) => {
   const theme: AgendaTheme = { ...defaultTheme, ...themeProp };
   const PX_PER_MIN = pxPerMin ?? DEFAULT_PX_PER_MIN;
 
+  const isFullWidthBreak = useCallback(
+    (session: Session) =>
+      fullWidthPattern?.test(session.Session_Type || session.Session_Title || "") ?? false,
+    [fullWidthPattern],
+  );
   const isRoomScopedBreak = useCallback(
     (title: string) => roomScopedBreakPattern?.test(title) ?? false,
     [roomScopedBreakPattern],
@@ -189,6 +216,15 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
     [roomColors, roomsOrdered],
   );
 
+  const getCardColor = useCallback(
+    (session: Session, room: string): string | undefined => {
+      const rule = cardColorRules?.find((r) => r.test(session));
+      if (rule) return rule.color;
+      return getRoomColor(room);
+    },
+    [cardColorRules, getRoomColor],
+  );
+
   const roomColW = (() => {
     if (!containerW) return DESKTOP_ROOM_W;
     if (isMobile) return containerW - TIME_COL_W;
@@ -206,21 +242,50 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
       string,
       { session: Session; minIdx: number; maxIdx: number }
     >();
+    const indicesByKey = new Map<string, number[]>();
     allSessions
-      .filter((s) => isTransversalBreak(s.Session_Title))
+      .filter((s) => isTransversalBreak(s.Session_Title) && !isFullWidthBreak(s))
       .forEach((s) => {
         const room = s.Session_Location?.trim() || "General";
         const idx = roomsOrdered.indexOf(room);
         if (idx === -1) return;
         const key = `${s.Session_Title}|${s.Session_Start_Time}|${s.Session_End_Time}`;
-        const existing = groups.get(key);
-        if (existing) {
-          existing.minIdx = Math.min(existing.minIdx, idx);
-          existing.maxIdx = Math.max(existing.maxIdx, idx);
-        } else {
-          groups.set(key, { session: s, minIdx: idx, maxIdx: idx });
-        }
+        if (!groups.has(key)) groups.set(key, { session: s, minIdx: idx, maxIdx: idx });
+        const list = indicesByKey.get(key) ?? [];
+        list.push(idx);
+        indicesByKey.set(key, list);
       });
+    // Partir en tramos contiguos: una franja que solo ocupa algunas salas no
+    // debe dibujarse como una única barra corrida que tape a las salas
+    // intermedias donde esa franja no existe (ej: coffee/posters en sala 1 y 3
+    // pero no en la 2, mientras en la 2 sigue habiendo una sesión real).
+    const segments: { session: Session; minIdx: number; maxIdx: number }[] = [];
+    groups.forEach(({ session }, key) => {
+      const sorted = [...new Set(indicesByKey.get(key) ?? [])].sort((a, b) => a - b);
+      let runStart = sorted[0];
+      let prev = sorted[0];
+      for (let i = 1; i <= sorted.length; i++) {
+        const cur = sorted[i];
+        if (cur === undefined || cur !== prev + 1) {
+          segments.push({ session, minIdx: runStart, maxIdx: prev });
+          if (cur !== undefined) runStart = cur;
+        }
+        prev = cur;
+      }
+    });
+    return segments;
+  })();
+
+  // --- Full-width breaks: una franja por (título+horario), a todo el ancho
+  // de la grilla sin importar en qué sala(s) esté cargada la sesión en SL.
+  // Va debajo de las tarjetas reales (se dibuja antes en el DOM, sin z-index
+  // propio) para que una sesión real concurrente en otra sala se siga viendo. ---
+  const fullWidthGroups = (() => {
+    const groups = new Map<string, Session>();
+    allSessions.filter(isFullWidthBreak).forEach((s) => {
+      const key = `${s.Session_Title}|${s.Session_Start_Time}|${s.Session_End_Time}`;
+      if (!groups.has(key)) groups.set(key, s);
+    });
     return Array.from(groups.values());
   })();
 
@@ -506,12 +571,56 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
 
               {/* Rooms container */}
               <div className="flex flex-1 relative">
+                {/* Full-width breaks layer: se pinta primero (sin z-index propio)
+                    para quedar debajo de las tarjetas reales de cada sala. */}
+                {fullWidthGroups.map((session) => {
+                  const start = timeToMinutes(session.Session_Start_Time);
+                  const end = timeToMinutes(session.Session_End_Time);
+                  const top = (start - baseMin) * PX_PER_MIN;
+                  const spanWidth = roomsOrdered.length * roomColW - 8;
+                  const height = Math.max((end - start) * PX_PER_MIN, 36);
+                  const availableForTitle = height - 4 - 24;
+                  const fit = fitTitleFont(session.Session_Title, spanWidth - 12, availableForTitle);
+                  // Si `cardColorRules` distingue este tipo de sesión (ej: Conferencias
+                  // Plenarias), se respeta ese color en vez del ámbar genérico de break.
+                  const ruleColor = cardColorRules?.find((r) => r.test(session))?.color;
+                  return (
+                    <button
+                      key={session.Session_Id}
+                      onClick={() => setSelectedSession(session)}
+                      className={`absolute z-[5] rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-md border ${ruleColor ? "bg-white" : "bg-amber-50 border-amber-200"}`}
+                      style={{
+                        left: 4,
+                        width: spanWidth,
+                        top: top + 2,
+                        height: height - 4,
+                        ...(ruleColor
+                          ? { borderColor: `${ruleColor}55`, borderLeft: `3px solid ${ruleColor}` }
+                          : {}),
+                      }}>
+                      <div className="p-1.5 flex flex-col items-center justify-center h-full">
+                        <span
+                          className={`text-[10px] font-bold leading-none mb-0.5 ${ruleColor ? "" : "text-amber-600"}`}
+                          style={ruleColor ? { color: ruleColor } : undefined}>
+                          {showTimeRange
+                            ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
+                            : session.Session_Start_Time}
+                        </span>
+                        <span
+                          className={`font-semibold text-center cursor-pointer hover:underline ${ruleColor ? "text-gray-800" : "text-amber-900"}`}
+                          style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
+                          {session.Session_Title}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
                 {roomsOrdered.map((room) => {
-                  const roomColor = getRoomColor(room);
                   const roomSessions = allSessions
                     .filter(
                       (s) =>
                         !isTransversalBreak(s.Session_Title) &&
+                        !isFullWidthBreak(s) &&
                         (s.Session_Location?.trim() || "General") === room,
                     )
                     .sort(
@@ -552,6 +661,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                           />
                         ))}
                         {roomSessions.map((session) => {
+                          const roomColor = getCardColor(session, room);
                           const start = timeToMinutes(session.Session_Start_Time);
                           const end = timeToMinutes(session.Session_End_Time);
                           const top = (start - baseMin) * PX_PER_MIN;
@@ -612,11 +722,13 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                             return (
                               <div
                                 key={session.Session_Id}
-                                className="absolute inset-x-1 rounded-xl overflow-hidden shadow-sm bg-amber-50 border border-amber-200"
+                                className="absolute inset-x-1 z-10 rounded-xl overflow-hidden shadow-sm bg-amber-50 border border-amber-200"
                                 style={{ top: top + 2, height: height - 4 }}>
                                 <div className="p-1.5 flex flex-col items-center justify-center h-full">
                                   <span className="text-[10px] font-bold leading-none mb-0.5 text-amber-600">
-                                    {session.Session_Start_Time}
+                                    {showTimeRange
+                                      ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
+                                      : session.Session_Start_Time}
                                   </span>
                                   <span
                                     className="font-semibold text-amber-900 text-center"
@@ -631,7 +743,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                             <button
                               key={session.Session_Id}
                               onClick={() => setSelectedSession(session)}
-                              className={`absolute inset-x-1 rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-sm ${roomColor ? "bg-white border" : `${theme.lightBg} border ${theme.lightBorder}`}`}
+                              className={`absolute inset-x-1 z-10 rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-sm ${roomColor ? "bg-white border" : `${theme.lightBg} border ${theme.lightBorder}`}`}
                               style={{
                                 top: top + 2,
                                 height: height - 4,
@@ -645,7 +757,9 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                               <div className="p-1.5 flex flex-col items-center justify-center text-center h-full">
                                 <span
                                   className={`text-[10px] font-bold leading-none mb-0.5 ${roomColor ? "text-gray-500" : theme.primaryText}`}>
-                                  {session.Session_Start_Time}
+                                  {showTimeRange
+                                    ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
+                                    : session.Session_Start_Time}
                                 </span>
                                 {sessionTypeLabel && (
                                   <span className="text-[9px] font-semibold uppercase tracking-wide leading-none mb-0.5 text-gray-400">
@@ -687,7 +801,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                     const fit = fitTitleFont(session.Session_Title, spanWidth - 12, availableForTitle);
                     return (
                       <button
-                        key={session.Session_Id}
+                        key={`${session.Session_Id}-${minIdx}`}
                         onClick={() => setSelectedSession(session)}
                         className="absolute rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-md bg-amber-50 border border-amber-200 z-10"
                         style={{
@@ -698,7 +812,9 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                         }}>
                         <div className="p-1.5 flex flex-col items-center justify-center h-full">
                           <span className="text-[10px] font-bold leading-none mb-0.5 text-amber-600">
-                            {session.Session_Start_Time}
+                            {showTimeRange
+                              ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
+                              : session.Session_Start_Time}
                           </span>
                           <span
                             className="font-semibold text-amber-900 text-center cursor-pointer hover:underline"

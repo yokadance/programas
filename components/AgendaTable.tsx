@@ -43,6 +43,15 @@ type AgendaTableProps = {
    * de marca queda solo en íconos, fondos y badges.
    */
   neutralText?: boolean;
+  /**
+   * En sesiones cuyo título contiene "poster" (ej: "Presentación de posters / Coffee Break"),
+   * oculta la lista de coautores y deja solo el título del trabajo y el presentador.
+   */
+  hidePosterCoauthors?: boolean;
+  /** Franja de colores (gradiente) arriba del cabezal, para reflejar la paleta del congreso (ej: colores del afiche). */
+  headerBarColors?: string[];
+  /** Fondo claro (hex) del encabezado de la tabla y del badge "Presentador". Default: rosa `#F9EDF1` (heredado de cc2026). */
+  lightAccentBg?: string;
 };
 
 const titlePattern = /^(Dr|Dra|Prof|Lic|Mg|PhD)[\.\s]/i;
@@ -89,9 +98,10 @@ const formatChairs = (session: Session, titlesMap?: Map<string, string>): string
   return unique.join(", ");
 };
 
-const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primaryColor, headerImages, neutralText }) => {
+const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primaryColor, headerImages, neutralText, hidePosterCoauthors, headerBarColors, lightAccentBg }) => {
   const PRIMARY = primaryColor ?? DEFAULT_PRIMARY;
   const TEXT = neutralText ? "#1F2937" : PRIMARY;
+  const LIGHT_BG = lightAccentBg ?? "#F9EDF1";
   const resolvedHeaderImages = headerImages ?? DEFAULT_HEADER_IMAGES;
   const titlesMap = useFacultyTitles(facultyEndpoint);
   const days = Object.keys(data.Programme.Days);
@@ -148,6 +158,12 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
     <div className="min-h-screen bg-gray-50">
       {/* ── CABEZAL ── */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
+        {headerBarColors && headerBarColors.length > 0 && (
+          <div
+            className="h-1.5 w-full"
+            style={{ background: `linear-gradient(90deg, ${headerBarColors.join(", ")})` }}
+          />
+        )}
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-center gap-3 md:gap-6">
           {resolvedHeaderImages.map((img, i) => (
             <img
@@ -253,7 +269,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
           <table className="min-w-full divide-y divide-gray-200 bg-white text-sm">
             <thead
               className="uppercase text-xs tracking-wider sticky top-0 z-10"
-              style={{ backgroundColor: "#F9EDF1", color: TEXT }}>
+              style={{ backgroundColor: LIGHT_BG, color: TEXT }}>
               <tr>
                 <th className="px-4 py-3 text-left font-bold">Hora</th>
                 <th className="px-4 py-3 text-left font-bold">Sesión</th>
@@ -337,13 +353,16 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                       presentation.Abstract.Authors.filter(
                                         (a: Authors) => a !== presentingAuthor,
                                       );
+                                    const isPoster =
+                                      hidePosterCoauthors &&
+                                      /poster/i.test(session.Session_Title || "");
                                     return (
                                       <>
                                         <div
                                           className="mt-2 text-xs font-semibold px-2 py-1 rounded w-fit"
                                           style={{
                                             color: TEXT,
-                                            backgroundColor: "#F9EDF1",
+                                            backgroundColor: LIGHT_BG,
                                           }}>
                                           Presentador:{" "}
                                           {presentingAuthor.First_Name}{" "}
@@ -351,7 +370,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                           {presentingAuthor.Country_Name} –{" "}
                                           {presentingAuthor.Company}
                                         </div>
-                                        {otherAuthors.length > 0 && (
+                                        {!isPoster && otherAuthors.length > 0 && (
                                           <ul className="list-disc list-inside text-xs text-gray-600 mt-2">
                                             {otherAuthors.map(
                                               (

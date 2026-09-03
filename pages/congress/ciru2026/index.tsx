@@ -1,4 +1,4 @@
-import { ALAG2026_PROGRAMME, ALAG2026_FACULTY } from "@/http/api";
+import { CIRU2026_PROGRAMME, CIRU2026_FACULTY } from "@/http/api";
 import { ProgrammeData } from "@/type/type";
 import React, { useEffect, useState } from "react";
 import AgendaTable from "@/components/AgendaTable";
@@ -6,7 +6,7 @@ import Loader from "@/components/Loader";
 import { generateAgendaPDF } from "@/utils/generateAgendaPDF";
 import { FileDown } from "lucide-react";
 
-const ALAG2026: React.FC = () => {
+const CIRU2026: React.FC = () => {
   const [data, setData] = useState<ProgrammeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,7 @@ const ALAG2026: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(ALAG2026_PROGRAMME);
+        const res = await fetch(CIRU2026_PROGRAMME);
         if (!res.ok) {
           setError("Error fetching data");
           setLoading(false);
@@ -32,7 +32,7 @@ const ALAG2026: React.FC = () => {
   }, []);
 
   if (loading)
-    return <Loader src="/loader/alag.png" alt="Cargando..." size={256} />;
+    return <Loader src="/logos/ciru-logo.png" alt="Cargando..." size={256} />;
   if (error) return <p>Error: {error}</p>;
   if (!data) return <p>No hay datos disponibles</p>;
 
@@ -40,11 +40,11 @@ const ALAG2026: React.FC = () => {
     if (!data) return;
     await generateAgendaPDF(data, {
       title: "AGENDA",
-      subtitle: "ALAG 2026",
-      footerText: "ALAG 2026  •  AGENDA OFICIAL",
-      roomOrder: ["Ballroom A", "Conference", "Picasso / Florida", "Renoir"],
-      facultyEndpoint: ALAG2026_FACULTY,
-      excludeDayDates: ["Mon 19 Oct 2026", "Tue 20 Oct 2026"],
+      subtitle: "CIRU 2026",
+      footerText: "CIRU 2026  •  AGENDA OFICIAL",
+      roomOrder: ["Sala Mansa"],
+      facultyEndpoint: CIRU2026_FACULTY,
+      accentColor: [27, 59, 95],
     });
   };
 
@@ -52,19 +52,21 @@ const ALAG2026: React.FC = () => {
     <div className="relative">
       <button
         onClick={handleDownloadPDF}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#3B7EE9] text-white text-sm font-semibold px-4 py-3 rounded-full shadow-lg hover:bg-[#4a7a84] active:scale-95 transition-all">
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#1B3B5F] text-white text-sm font-semibold px-4 py-3 rounded-full shadow-lg hover:bg-[#14304C] active:scale-95 transition-all">
         <FileDown className="w-4 h-4" />
         Descargar PDF
       </button>
       <AgendaTable
         data={data}
-        facultyEndpoint={ALAG2026_FACULTY}
-        primaryColor="#083E84"
-        hidePosterCoauthors
+        facultyEndpoint={CIRU2026_FACULTY}
+        primaryColor="#1B3B5F"
+        neutralText
+        headerBarColors={["#1B3B5F", "#F5921F", "#29A98C"]}
+        lightAccentBg="#EAF3F1"
         headerImages={[
           {
-            src: "/portadas/alag/cabezalALAG.png",
-            alt: "ALAG 2026",
+            src: "/portadas/ciru2026/cabezal-ciru2026.png",
+            alt: "76º Congreso Uruguayo de Cirugía 2026",
             className: "h-20 md:h-32 w-auto object-contain flex-shrink-0",
           },
         ]}
@@ -73,4 +75,4 @@ const ALAG2026: React.FC = () => {
   );
 };
 
-export default ALAG2026;
+export default CIRU2026;
