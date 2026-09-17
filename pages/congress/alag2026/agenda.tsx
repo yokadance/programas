@@ -93,6 +93,8 @@ const ALAG2026Agenda: React.FC = () => {
       fullWidthPattern={/poster|coffee|c[oó]ctel|cocktail|cena|conferencia/i}
       showTimeRange
       cardColorRules={ALAG_CARD_COLOR_RULES}
+      solidCardColors
+      excludeDayDates={["Mon 19 Oct 2026"]}
       theme={{
         primaryBg: "bg-[#083E84]",
         primaryText: "text-[#3B7EE9]",

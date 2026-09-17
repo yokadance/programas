@@ -119,6 +119,14 @@ type AgendaCalendarProps = {
    * ve encima y la franja no la tapa.
    */
   fullWidthPattern?: RegExp;
+  /** Días a ocultar por completo de la agenda (match exacto contra `Date_String`, ej: "Mon 19 Oct 2026"). No aparecen en el selector de días ni en su contenido. */
+  excludeDayDates?: string[];
+  /**
+   * Cuando una sesión tiene color asignado (por `cardColorRules`), pinta la
+   * tarjeta entera con ese color de fondo y texto blanco, en vez del fondo
+   * blanco con borde de acento que usa `roomColors`.
+   */
+  solidCardColors?: boolean;
 };
 
 const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
@@ -141,6 +149,8 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   showTimeRange,
   cardColorRules,
   fullWidthPattern,
+  excludeDayDates,
+  solidCardColors,
 }) => {
   const theme: AgendaTheme = { ...defaultTheme, ...themeProp };
   const PX_PER_MIN = pxPerMin ?? DEFAULT_PX_PER_MIN;
@@ -159,7 +169,9 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
     [isRoomScopedBreak],
   );
 
-  const days = Object.keys(data.Programme.Days);
+  const days = Object.keys(data.Programme.Days).filter(
+    (day) => !excludeDayDates?.includes(data.Programme.Days[day].Date_String),
+  );
   const [selectedDay, setSelectedDay] = useState(days[0]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
@@ -584,30 +596,35 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                   // Si `cardColorRules` distingue este tipo de sesión (ej: Conferencias
                   // Plenarias), se respeta ese color en vez del ámbar genérico de break.
                   const ruleColor = cardColorRules?.find((r) => r.test(session))?.color;
+                  const solid = ruleColor && solidCardColors;
                   return (
                     <button
                       key={session.Session_Id}
                       onClick={() => setSelectedSession(session)}
-                      className={`absolute z-[5] rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-md border ${ruleColor ? "bg-white" : "bg-amber-50 border-amber-200"}`}
+                      className={`absolute z-[5] rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-md ${
+                        solid ? "" : ruleColor ? "bg-white border" : "bg-amber-50 border border-amber-200"
+                      }`}
                       style={{
                         left: 4,
                         width: spanWidth,
                         top: top + 2,
                         height: height - 4,
-                        ...(ruleColor
-                          ? { borderColor: `${ruleColor}55`, borderLeft: `3px solid ${ruleColor}` }
-                          : {}),
+                        ...(solid
+                          ? { backgroundColor: ruleColor }
+                          : ruleColor
+                            ? { borderColor: `${ruleColor}55`, borderLeft: `3px solid ${ruleColor}` }
+                            : {}),
                       }}>
                       <div className="p-1.5 flex flex-col items-center justify-center h-full">
                         <span
-                          className={`text-[10px] font-bold leading-none mb-0.5 ${ruleColor ? "" : "text-amber-600"}`}
-                          style={ruleColor ? { color: ruleColor } : undefined}>
+                          className={`text-[10px] font-bold leading-none mb-0.5 ${solid ? "text-white" : ruleColor ? "" : "text-amber-600"}`}
+                          style={!solid && ruleColor ? { color: ruleColor } : undefined}>
                           {showTimeRange
                             ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
                             : session.Session_Start_Time}
                         </span>
                         <span
-                          className={`font-semibold text-center cursor-pointer hover:underline ${ruleColor ? "text-gray-800" : "text-amber-900"}`}
+                          className={`font-semibold text-center cursor-pointer hover:underline ${solid ? "text-white" : ruleColor ? "text-gray-800" : "text-amber-900"}`}
                           style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
                           {session.Session_Title}
                         </span>
@@ -739,41 +756,51 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                               </div>
                             );
                           }
+                          const solid = roomColor && solidCardColors;
                           return (
                             <button
                               key={session.Session_Id}
                               onClick={() => setSelectedSession(session)}
-                              className={`absolute inset-x-1 z-10 rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-sm ${roomColor ? "bg-white border" : `${theme.lightBg} border ${theme.lightBorder}`}`}
+                              className={`absolute inset-x-1 z-10 rounded-xl text-left overflow-hidden transition-all duration-150 active:scale-95 hover:shadow-lg hover:brightness-95 shadow-sm ${
+                                solid
+                                  ? ""
+                                  : roomColor
+                                    ? "bg-white border"
+                                    : `${theme.lightBg} border ${theme.lightBorder}`
+                              }`}
                               style={{
                                 top: top + 2,
                                 height: height - 4,
-                                ...(roomColor
-                                  ? {
-                                      borderColor: `${roomColor}55`,
-                                      borderLeft: `3px solid ${roomColor}`,
-                                    }
-                                  : {}),
+                                ...(solid
+                                  ? { backgroundColor: roomColor }
+                                  : roomColor
+                                    ? {
+                                        borderColor: `${roomColor}55`,
+                                        borderLeft: `3px solid ${roomColor}`,
+                                      }
+                                    : {}),
                               }}>
                               <div className="p-1.5 flex flex-col items-center justify-center text-center h-full">
                                 <span
-                                  className={`text-[10px] font-bold leading-none mb-0.5 ${roomColor ? "text-gray-500" : theme.primaryText}`}>
+                                  className={`text-[10px] font-bold leading-none mb-0.5 ${solid ? "text-white" : roomColor ? "text-gray-500" : theme.primaryText}`}>
                                   {showTimeRange
                                     ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
                                     : session.Session_Start_Time}
                                 </span>
                                 {sessionTypeLabel && (
-                                  <span className="text-[9px] font-semibold uppercase tracking-wide leading-none mb-0.5 text-gray-400">
+                                  <span
+                                    className={`text-[9px] font-semibold uppercase tracking-wide leading-none mb-0.5 ${solid ? "text-white/80" : "text-gray-400"}`}>
                                     {sessionTypeLabel}
                                   </span>
                                 )}
                                 <span
-                                  className={`font-semibold ${roomColor ? "text-gray-800" : theme.titleText} cursor-pointer hover:underline`}
+                                  className={`font-semibold cursor-pointer hover:underline ${solid ? "text-white" : roomColor ? "text-gray-800" : theme.titleText}`}
                                   style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
                                   {session.Session_Title}
                                 </span>
                                 {showBadge && (
                                   <span
-                                    className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium opacity-80 ${roomColor ? "text-gray-500" : theme.badgeText}`}>
+                                    className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium opacity-80 ${solid ? "text-white" : roomColor ? "text-gray-500" : theme.badgeText}`}>
                                     <Users className="w-2.5 h-2.5" />
                                     {session.Presentations.length} charla
                                     {session.Presentations.length !== 1
