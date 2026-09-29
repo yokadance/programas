@@ -4,6 +4,7 @@ import { Clock, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import SessionDetailModal from "./SessionDetailModal";
 import BottomNav from "./BottomNav";
 import { generateAgendaPDF, isBreak, parseDate } from "@/utils/generateAgendaPDF";
+import { renderRichText, stripTags } from "@/utils/richText";
 
 // --- Layout constants ---
 const DEFAULT_PX_PER_MIN = 2;
@@ -21,6 +22,24 @@ function timeToMinutes(time: string): number {
 // bloques de la misma duración se vean con tipografías distintas). Sólo se
 // reduce como último recurso, cuando ni siquiera el crecimiento seguro de la
 // tarjeta (hasta el inicio de la próxima sesión de la sala) alcanza.
+/**
+ * Con `solidCardColors` la tarjeta se pinta con el color de la sesión, y el
+ * texto tiene que adaptarse: blanco sobre colores fuertes, oscuro sobre
+ * pasteles (un verde agua con texto blanco queda ilegible). Se decide por
+ * contraste WCAG contra blanco: si no llega a 3:1 (mínimo AA para texto en
+ * negrita, que es el caso de las tarjetas), va texto oscuro.
+ */
+function needsDarkText(hex: string): boolean {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return false;
+  const channel = (i: number) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const L = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  return 1.05 / (L + 0.05) < 3;
+}
+
 const FIXED_TITLE_FONT = 11;
 const FIXED_TITLE_LINE_H = 13;
 const TITLE_FONT_FALLBACKS = [11, 10, 9, 8];
@@ -96,6 +115,8 @@ type AgendaCalendarProps = {
   neutralText?: boolean;
   /** En el modal de detalle, separa Chair (Presidente-Moderador/a) y Co-Chair (Secretario/a) en vez de un único "Modera". */
   splitChairRoles?: boolean;
+  /** En el modal de detalle, usa "Modera"/"Moderan" según la cantidad de personas. */
+  pluralizeChairLabel?: boolean;
   /** Muestra el campo `Session_Type` de SL entre el horario y el título de cada tarjeta. */
   showSessionType?: boolean;
   /** Oculta el badge de "N charlas" que se muestra debajo del título de cada tarjeta. */
@@ -119,6 +140,8 @@ type AgendaCalendarProps = {
    * ve encima y la franja no la tapa.
    */
   fullWidthPattern?: RegExp;
+  /** Ancho máximo (px) de cada columna de sala en desktop. Sin esto, con pocas salas las columnas se estiran a todo el ancho. */
+  maxRoomColW?: number;
   /** Días a ocultar por completo de la agenda (match exacto contra `Date_String`, ej: "Mon 19 Oct 2026"). No aparecen en el selector de días ni en su contenido. */
   excludeDayDates?: string[];
   /**
@@ -144,6 +167,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   roomColors,
   neutralText,
   splitChairRoles,
+  pluralizeChairLabel,
   showSessionType,
   hideTalkCountBadge,
   showTimeRange,
@@ -151,6 +175,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   fullWidthPattern,
   excludeDayDates,
   solidCardColors,
+  maxRoomColW,
 }) => {
   const theme: AgendaTheme = { ...defaultTheme, ...themeProp };
   const PX_PER_MIN = pxPerMin ?? DEFAULT_PX_PER_MIN;
@@ -243,7 +268,9 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
     // Desktop: fill available width, minimum 220px per column
     const available = containerW - TIME_COL_W;
     const dynamic = Math.floor(available / roomsOrdered.length);
-    return Math.max(220, dynamic);
+    const width = Math.max(220, dynamic);
+    // Con pocas salas las columnas se estiran demasiado: `maxRoomColW` las acota.
+    return maxRoomColW ? Math.min(width, maxRoomColW) : width;
   })();
 
   // --- Transversal breaks: group same title+horario, abarcando sólo las
@@ -406,7 +433,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                   {s.Session_Start_Time} – {s.Session_End_Time}
                   {s.Session_Location ? ` · ${s.Session_Location}` : ""}
                 </div>
-                <div className="print-session-title">{s.Session_Title}</div>
+                <div className="print-session-title">{renderRichText(s.Session_Title)}</div>
                 {s.Session_Chair && (
                   <div className="print-chair">Modera: {s.Session_Chair}</div>
                 )}
@@ -417,7 +444,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                         {p.Start_Time}
                       </span>
                     )}
-                    {p.Presentation_Title}
+                    {renderRichText(p.Presentation_Title)}
                     {p.AllSpeakers?.length > 0 && (
                       <span style={{ color: "#888" }}>
                         {" — "}
@@ -592,11 +619,12 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                   const spanWidth = roomsOrdered.length * roomColW - 8;
                   const height = Math.max((end - start) * PX_PER_MIN, 36);
                   const availableForTitle = height - 4 - 24;
-                  const fit = fitTitleFont(session.Session_Title, spanWidth - 12, availableForTitle);
+                  const fit = fitTitleFont(stripTags(session.Session_Title), spanWidth - 12, availableForTitle);
                   // Si `cardColorRules` distingue este tipo de sesión (ej: Conferencias
                   // Plenarias), se respeta ese color en vez del ámbar genérico de break.
                   const ruleColor = cardColorRules?.find((r) => r.test(session))?.color;
                   const solid = ruleColor && solidCardColors;
+                  const darkTxt = solid && needsDarkText(ruleColor!);
                   return (
                     <button
                       key={session.Session_Id}
@@ -617,16 +645,16 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                       }}>
                       <div className="p-1.5 flex flex-col items-center justify-center h-full">
                         <span
-                          className={`text-[10px] font-bold leading-none mb-0.5 ${solid ? "text-white" : ruleColor ? "" : "text-amber-600"}`}
+                          className={`text-[10px] font-bold leading-none mb-0.5 ${solid ? (darkTxt ? "text-gray-800" : "text-white") : ruleColor ? "" : "text-amber-600"}`}
                           style={!solid && ruleColor ? { color: ruleColor } : undefined}>
                           {showTimeRange
                             ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
                             : session.Session_Start_Time}
                         </span>
                         <span
-                          className={`font-semibold text-center cursor-pointer hover:underline ${solid ? "text-white" : ruleColor ? "text-gray-800" : "text-amber-900"}`}
+                          className={`font-semibold text-center cursor-pointer hover:underline ${solid ? (darkTxt ? "text-gray-900" : "text-white") : ruleColor ? "text-gray-800" : "text-amber-900"}`}
                           style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
-                          {session.Session_Title}
+                          {renderRichText(session.Session_Title)}
                         </span>
                       </div>
                     </button>
@@ -695,7 +723,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                           // título entre completo con la tipografía fija (uniforme).
                           const naturalH = (end - start) * PX_PER_MIN;
                           const linesAtFixedFont = estimateLines(
-                            session.Session_Title,
+                            stripTags(session.Session_Title),
                             titleWidthPx,
                             FIXED_TITLE_FONT,
                           );
@@ -750,13 +778,14 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                                   <span
                                     className="font-semibold text-amber-900 text-center"
                                     style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
-                                    {session.Session_Title}
+                                    {renderRichText(session.Session_Title)}
                                   </span>
                                 </div>
                               </div>
                             );
                           }
                           const solid = roomColor && solidCardColors;
+                          const darkTxt = solid && needsDarkText(roomColor!);
                           return (
                             <button
                               key={session.Session_Id}
@@ -782,25 +811,25 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                               }}>
                               <div className="p-1.5 flex flex-col items-center justify-center text-center h-full">
                                 <span
-                                  className={`text-[10px] font-bold leading-none mb-0.5 ${solid ? "text-white" : roomColor ? "text-gray-500" : theme.primaryText}`}>
+                                  className={`text-[10px] font-bold leading-none mb-0.5 ${solid ? (darkTxt ? "text-gray-800" : "text-white") : roomColor ? "text-gray-500" : theme.primaryText}`}>
                                   {showTimeRange
                                     ? `${session.Session_Start_Time} – ${session.Session_End_Time}`
                                     : session.Session_Start_Time}
                                 </span>
                                 {sessionTypeLabel && (
                                   <span
-                                    className={`text-[9px] font-semibold uppercase tracking-wide leading-none mb-0.5 ${solid ? "text-white/80" : "text-gray-400"}`}>
+                                    className={`text-[9px] font-semibold uppercase tracking-wide leading-none mb-0.5 ${solid ? (darkTxt ? "text-gray-700" : "text-white/80") : "text-gray-400"}`}>
                                     {sessionTypeLabel}
                                   </span>
                                 )}
                                 <span
-                                  className={`font-semibold cursor-pointer hover:underline ${solid ? "text-white" : roomColor ? "text-gray-800" : theme.titleText}`}
+                                  className={`font-semibold cursor-pointer hover:underline ${solid ? (darkTxt ? "text-gray-900" : "text-white") : roomColor ? "text-gray-800" : theme.titleText}`}
                                   style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
-                                  {session.Session_Title}
+                                  {renderRichText(session.Session_Title)}
                                 </span>
                                 {showBadge && (
                                   <span
-                                    className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium opacity-80 ${solid ? "text-white" : roomColor ? "text-gray-500" : theme.badgeText}`}>
+                                    className={`mt-1 inline-flex items-center gap-1 text-[10px] font-medium opacity-80 ${solid ? (darkTxt ? "text-gray-800" : "text-white") : roomColor ? "text-gray-500" : theme.badgeText}`}>
                                     <Users className="w-2.5 h-2.5" />
                                     {session.Presentations.length} charla
                                     {session.Presentations.length !== 1
@@ -825,7 +854,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                     const spanWidth = (maxIdx - minIdx + 1) * roomColW - 8;
                     const height = Math.max((end - start) * PX_PER_MIN, 36);
                     const availableForTitle = height - 4 - 24;
-                    const fit = fitTitleFont(session.Session_Title, spanWidth - 12, availableForTitle);
+                    const fit = fitTitleFont(stripTags(session.Session_Title), spanWidth - 12, availableForTitle);
                     return (
                       <button
                         key={`${session.Session_Id}-${minIdx}`}
@@ -846,7 +875,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
                           <span
                             className="font-semibold text-amber-900 text-center cursor-pointer hover:underline"
                             style={{ fontSize: fit.fontSize, lineHeight: `${fit.lineHeight}px` }}>
-                            {session.Session_Title}
+                            {renderRichText(session.Session_Title)}
                           </span>
                         </div>
                       </button>
@@ -879,6 +908,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
           onClose={() => setSelectedSession(null)}
           neutralText={neutralText}
           splitChairRoles={splitChairRoles}
+          pluralizeChairLabel={pluralizeChairLabel}
         />
       )}
     </div>

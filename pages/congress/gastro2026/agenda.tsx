@@ -68,6 +68,8 @@ const GASTRO2026Agenda: React.FC = () => {
       // superponen. 5px/min les da lugar sin achicar demasiado el grillado.
       pxPerMin={5}
       roomColors={["#3FA9CA", "#F26527", "#8CC46F", "#F9A237", "#4E6688"]}
+      pluralizeChairLabel
+      maxRoomColW={320}
       theme={{
         primaryBg: "bg-[#3FA9CA]",
         primaryText: "text-[#3FA9CA]",

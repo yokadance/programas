@@ -9,14 +9,29 @@ const toMin = (t: string) => {
   return h * 60 + (m || 0);
 };
 
-// Colores dentro de la paleta de ALAG (ver theme más abajo), asignados por
-// tipo de actividad en vez de por sala: Simposio, Conferencias Plenarias y
-// actividades de 30 minutos se distinguen de un vistazo.
+// Actividades que no son simposios comunes (mesa de discusión, espacios de
+// trabajos, competencia): en SL no comparten un Session_Type propio — una tiene
+// el tipo vacío y las otras "Presentaciones / Lanzamientos", que también usan
+// los lanzamientos de 30 min. Por eso se identifican por título.
+const ACTIVIDADES_ESPECIALES =
+  /espacio joven|trabajos destacados|copa gen[oó]mica|subrepresentaci[oó]n de latinoam/i;
+
+// Colores por tipo de actividad en vez de por sala. El recuadro se pinta con
+// este color y el texto (blanco u oscuro) lo elige el propio componente segun
+// el contraste, asi los pasteles quedan legibles.
 const ALAG_CARD_COLOR_RULES = [
   { test: (s: Session) => s.Session_Type === "Simposio", color: "#3B7EE9" },
   {
     test: (s: Session) => s.Session_Type === "Conferencias Plenarias",
     color: "#7F2996",
+  },
+  {
+    test: (s: Session) => /^acto de (apertura|clausura)$/i.test(s.Session_Type || ""),
+    color: "#A7D8E8", // celeste agua
+  },
+  {
+    test: (s: Session) => ACTIVIDADES_ESPECIALES.test(s.Session_Title || ""),
+    color: "#9FDDD0", // verde agua
   },
   {
     test: (s: Session) =>
@@ -90,7 +105,7 @@ const ALAG2026Agenda: React.FC = () => {
       // coffee breaks, conferencias plenarias): se muestran como una franja
       // a todo el ancho aunque en SL estén cargados en una sola sala, y van
       // debajo de cualquier sesión real concurrente en otra sala.
-      fullWidthPattern={/poster|coffee|c[oó]ctel|cocktail|cena|conferencia/i}
+      fullWidthPattern={/poster|coffee|c[oó]ctel|cocktail|cena|conferencia|acto de (apertura|clausura)/i}
       showTimeRange
       cardColorRules={ALAG_CARD_COLOR_RULES}
       solidCardColors

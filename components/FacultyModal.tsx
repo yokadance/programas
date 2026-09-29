@@ -103,7 +103,7 @@
 //                   {faculty.Assignments.presentations.map((p, i) => (
 //                     <li key={i} className="border-b pb-2">
 //                       <p className="font-medium text-blue-700">
-//                         {p.Presentation_Title}
+//                         {renderRichText(p.Presentation_Title)}
 //                       </p>
 //                       <p>
 //                         {p.Session_Title} – {p.Session_Start_Time} -{" "}
@@ -131,6 +131,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { FacultyData } from "@/type/type";
 import countries from "../country-flags/countries_with_flags.json";
+import { renderRichText } from "@/utils/richText";
 
 const formatDate = (dateStr: string): string => {
   const isoMatch = dateStr?.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -267,7 +268,7 @@ const FacultyModal: React.FC<FacultyModalProps> = ({
                   {faculty.Assignments.presentations.map((p, i) => (
                     <li key={i} className="border-b pb-2">
                       <p className="font-medium text-blue-700">
-                        {p.Presentation_Title}
+                        {renderRichText(p.Presentation_Title)}
                       </p>
                       <p className="text-xs text-gray-600 capitalize mb-1">
                         📅 {formatDate(p.Session_Date)}

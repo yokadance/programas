@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import { ProgrammeData, Session, Speaker } from "@/type/type";
 import { getCountryLabel } from "@/utils/countryLabel";
+import { stripTags } from "@/utils/richText";
 
 export function isBreak(title: string): boolean {
   const l = title.toLowerCase();
@@ -156,7 +157,7 @@ export async function generateAgendaPDF(
     const titleMaxW = showRoom ? TITLE_W - 36 : TITLE_W;
     // Set font BEFORE splitTextToSize so width measurement matches rendering
     doc.setFontSize(9).setFont("helvetica", "bold");
-    const titleLines: string[] = doc.splitTextToSize(s.Session_Title, titleMaxW);
+    const titleLines: string[] = doc.splitTextToSize(stripTags(s.Session_Title), titleMaxW);
     const rowH = Math.max(titleLines.length * 5, 7);
     checkPage(rowH + 8);
 
@@ -180,8 +181,8 @@ export async function generateAgendaPDF(
     }
     y += rowH;
 
-    // Chair
-    const chairStr = (() => {
+    // Chair — lista de nombres, para poder usar singular/plural en la etiqueta
+    const chairs: string[] = (() => {
       if (s.Session_Faculty?.length > 0) {
         return s.Session_Faculty
           .slice()
@@ -192,13 +193,16 @@ export async function generateAgendaPDF(
               ? (f.Prefix_Title || (f.Faculty_Id ? titlesMap.get(f.Faculty_Id) : undefined) || "")
               : "";
             return `${prefix ? prefix + " " : ""}${f.First_Name} ${f.Family_Name}`.trim();
-          })
-          .join(", ");
+          });
       }
-      return s.Session_Chair || null;
+      if (!s.Session_Chair) return [];
+      // Se respeta el orden en que vienen cargados en SL (no se reordena).
+      const parts = s.Session_Chair.split(/[;,]/).map((p) => p.trim()).filter(Boolean);
+      return [...new Set(parts)];
     })();
-    if (chairStr) {
-      splitWrite(`Coordinan: ${chairStr}`, ML + TIME_W, TITLE_W, 7.5, "italic", AR, AG, AB, 4.5);
+    if (chairs.length > 0) {
+      const label = chairs.length === 1 ? "Coordina" : "Coordinan";
+      splitWrite(`${label}: ${chairs.join(", ")}`, ML + TIME_W, TITLE_W, 7.5, "italic", AR, AG, AB, 4.5);
       y += 1;
     }
 
@@ -220,7 +224,7 @@ export async function generateAgendaPDF(
         }
 
         // Presentation title — aligned to title column
-        splitWrite(`• ${p.Presentation_Title}`, titleX, TITLE_W, 7.5, "bold", 70, 70, 70, 4);
+        splitWrite(`• ${stripTags(p.Presentation_Title)}`, titleX, TITLE_W, 7.5, "bold", 70, 70, 70, 4);
 
         // Speakers — sorted by family name, with title and country
         if (p.AllSpeakers?.length) {

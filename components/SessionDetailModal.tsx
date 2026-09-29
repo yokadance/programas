@@ -4,6 +4,7 @@ import { X, Clock, UserRound, MapPin, ArrowRight } from "lucide-react";
 import FacultyModal from "./FacultyModal";
 import { getCountryLabel } from "@/utils/countryLabel";
 import { useFacultyTitles } from "@/hooks/useFacultyTitles";
+import { renderRichText } from "@/utils/richText";
 
 const titlePattern = /^(Dr|Dra|Prof|Lic|Mg|PhD)[\.\s]/i;
 
@@ -29,11 +30,11 @@ const getSpeakerName = (spk: Speaker, titlesMap?: Map<string, string>): string =
   return `${spk.First_Name} ${spk.Family_Name}`;
 };
 
-const formatNameString = (
+const splitNames = (
   str: string | null | undefined,
   opts: { sort?: boolean } = {},
-): string | null => {
-  if (!str) return null;
+): string[] => {
+  if (!str) return [];
   const parts = str.split(/[;,]/).map((p) => p.trim()).filter(Boolean);
   const unique = [...new Set(parts)];
   // Por defecto se alfabetiza (comportamiento histórico del "Modera:" único).
@@ -46,18 +47,23 @@ const formatNameString = (
       return lastA.localeCompare(lastB, "es", { sensitivity: "base" });
     });
   }
-  return unique.join(", ") || null;
+  return unique;
 };
 
-const formatChairs = (faculty: Faculty[], chairStr: string | null, titlesMap?: Map<string, string>) => {
+const formatNameString = (
+  str: string | null | undefined,
+  opts: { sort?: boolean } = {},
+): string | null => splitNames(str, opts).join(", ") || null;
+
+/** Lista de moderadores (no un string unido) para poder contarlos. */
+const getChairs = (faculty: Faculty[], chairStr: string | null, titlesMap?: Map<string, string>): string[] => {
   if (faculty && faculty.length > 0) {
     return faculty
       .slice()
       .sort((a, b) => a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" }))
-      .map((f) => formatFacultyName(f, titlesMap))
-      .join(", ");
+      .map((f) => formatFacultyName(f, titlesMap));
   }
-  return formatNameString(chairStr);
+  return splitNames(chairStr);
 };
 
 type SessionDetailModalProps = {
@@ -74,6 +80,8 @@ type SessionDetailModalProps = {
    * que mezcla Session_Faculty/Session_Chair.
    */
   splitChairRoles?: boolean;
+  /** Usa "Modera" con una sola persona y "Moderan" con dos o más, en vez de "Modera" fijo. */
+  pluralizeChairLabel?: boolean;
 };
 
 const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
@@ -84,6 +92,7 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
   onClose,
   neutralText,
   splitChairRoles,
+  pluralizeChairLabel,
 }) => {
   const [selectedFacultyId, setSelectedFacultyId] = useState<string | null>(null);
   const [sessionDetail, setSessionDetail] = useState<Session>(session);
@@ -172,7 +181,7 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
               {/* Title */}
               <h2
                 className={`text-base font-bold ${theme.titleText} leading-none`}>
-                {sessionDetail.Session_Title}
+                {renderRichText(sessionDetail.Session_Title)}
               </h2>
 
               {/* Session Description / Summary */}
@@ -238,17 +247,19 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                 })()
               ) : (
                 (() => {
-                  const chairs = formatChairs(sessionDetail.Session_Faculty ?? [], sessionDetail.Session_Chair, titlesMap);
-                  if (!chairs) return null;
+                  const chairs = getChairs(sessionDetail.Session_Faculty ?? [], sessionDetail.Session_Chair, titlesMap);
+                  if (chairs.length === 0) return null;
+                  const label =
+                    pluralizeChairLabel && chairs.length > 1 ? "Moderan" : "Modera";
                   return (
                     <div
                       className={`mt-2 inline-flex items-center gap-1.5 text-xs ${theme.lightBg} border ${theme.lightBorder} rounded-full px-3 py-1`}>
                       <UserRound
                         className={`w-3 h-3 ${theme.chairIconColor} flex-shrink-0`}
                       />
-                      <span className="text-gray-500 leading-none">Modera:</span>
+                      <span className="text-gray-500 leading-none">{label}:</span>
                       <span className={`${NAME_COLOR} font-semibold leading-none`}>
-                        {chairs}
+                        {chairs.join(", ")}
                       </span>
                     </div>
                   );
@@ -291,7 +302,9 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                       className={`w-4 h-4 ${theme.iconColor} mt-0.5 flex-shrink-0`}
                     />
                     <p className="text-sm text-gray-800 font-medium leading-none">
-                      {presentation.Presentation_Title || (
+                      {presentation.Presentation_Title ? (
+                        renderRichText(presentation.Presentation_Title)
+                      ) : (
                         <span className="text-gray-400 italic">Sin título</span>
                       )}
                     </p>

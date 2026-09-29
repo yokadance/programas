@@ -16,6 +16,7 @@ import {
 
 import FacultyModal from "./FacultyModal";
 import { parseDate } from "@/utils/generateAgendaPDF";
+import { renderRichText } from "@/utils/richText";
 
 const DEFAULT_PRIMARY = "#7B1535";
 
@@ -73,7 +74,8 @@ const getSpeakerName = (
   return `${spk.First_Name} ${spk.Family_Name}`;
 };
 
-const formatChairs = (session: Session, titlesMap?: Map<string, string>): string | null => {
+/** Devuelve la lista de coordinadores (no un string unido) para poder contarlos. */
+const getChairs = (session: Session, titlesMap?: Map<string, string>): string[] => {
   if (session.Session_Faculty?.length > 0) {
     return session.Session_Faculty
       .slice()
@@ -84,10 +86,9 @@ const formatChairs = (session: Session, titlesMap?: Map<string, string>): string
           ? (f.Prefix_Title || (f.Faculty_Id ? titlesMap?.get(f.Faculty_Id) : undefined) || "")
           : "";
         return `${prefix ? prefix + " " : ""}${f.First_Name} ${f.Family_Name}`.trim();
-      })
-      .join(", ");
+      });
   }
-  if (!session.Session_Chair) return null;
+  if (!session.Session_Chair) return [];
   const parts = session.Session_Chair.split(/[;,]/).map((p) => p.trim()).filter(Boolean);
   const unique = [...new Set(parts)];
   unique.sort((a, b) => {
@@ -95,8 +96,11 @@ const formatChairs = (session: Session, titlesMap?: Map<string, string>): string
     const lastB = b.split(/\s+/).at(-1) ?? b;
     return lastA.localeCompare(lastB, "es", { sensitivity: "base" });
   });
-  return unique.join(", ");
+  return unique;
 };
+
+/** "Coordina" con una sola persona, "Coordinan" con dos o más. */
+export const chairLabel = (count: number) => (count === 1 ? "Coordina" : "Coordinan");
 
 const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primaryColor, headerImages, neutralText, hidePosterCoauthors, headerBarColors, lightAccentBg }) => {
   const PRIMARY = primaryColor ?? DEFAULT_PRIMARY;
@@ -300,22 +304,26 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                       <span className="mt-0.5 flex-shrink-0">
                         {getIcon(session.Session_Title)}
                       </span>
-                      {session.Session_Title}
+                      {renderRichText(session.Session_Title)}
                     </div>
-                    {formatChairs(session, titlesMap) && (
+                    {(() => {
+                      const chairs = getChairs(session, titlesMap);
+                      if (chairs.length === 0) return null;
+                      return (
                       <div className="flex items-center text-xs text-gray-500 mb-3">
                         <UserRound
                           className="w-3.5 h-3.5 mr-1.5 flex-shrink-0"
                           style={{ color: PRIMARY }}
                         />
-                        Coordinan:
+                        {chairLabel(chairs.length)}:
                         <span
                           className="ml-1 font-medium"
                           style={{ color: TEXT }}>
-                          {formatChairs(session, titlesMap)}
+                          {chairs.join(", ")}
                         </span>
                       </div>
-                    )}
+                      );
+                    })()}
                     <div className="space-y-3 mt-3 px-1">
                       {session.Presentations?.slice()
                         .sort(
@@ -342,7 +350,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                       {presentation.Start_Time}
                                     </span>
                                   )}
-                                {presentation.Presentation_Title}
+                                {renderRichText(presentation.Presentation_Title)}
                                 {presentation.Abstract.Authors.length > 0 &&
                                   (() => {
                                     const presentingAuthor =
@@ -455,7 +463,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                 <span className="mt-0.5 flex-shrink-0">
                   {getIcon(session.Session_Title)}
                 </span>
-                {session.Session_Title}
+                {renderRichText(session.Session_Title)}
               </div>
               <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
                 <MapPin
@@ -464,17 +472,21 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                 />
                 {session.Session_Location || "—"}
               </div>
-              {formatChairs(session, titlesMap) && (
-                <div
-                  className="flex items-center gap-1.5 text-xs font-medium mb-3"
-                  style={{ color: TEXT }}>
-                  <UserRound
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                    style={{ color: PRIMARY }}
-                  />
-                  Coordinan: {formatChairs(session, titlesMap)}
-                </div>
-              )}
+              {(() => {
+                const chairs = getChairs(session, titlesMap);
+                if (chairs.length === 0) return null;
+                return (
+                  <div
+                    className="flex items-center gap-1.5 text-xs font-medium mb-3"
+                    style={{ color: TEXT }}>
+                    <UserRound
+                      className="w-3.5 h-3.5 flex-shrink-0"
+                      style={{ color: PRIMARY }}
+                    />
+                    {chairLabel(chairs.length)}: {chairs.join(", ")}
+                  </div>
+                );
+              })()}
               <div className="mt-1 space-y-3">
                 {session.Presentations?.length ? (
                   session.Presentations.slice()
@@ -499,7 +511,7 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                 {presentation.Start_Time}
                               </span>
                             )}
-                          {presentation.Presentation_Title}
+                          {renderRichText(presentation.Presentation_Title)}
                         </div>
                         <div className="space-y-2">
                           {presentation.AllSpeakers.slice()
