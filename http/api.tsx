@@ -46,3 +46,7 @@ export const GINE2026_SESSION = (sessionId: string) => `${SHOKLOGIC_URL}/${proce
 export const CIRU2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CIRU2026}/Programme/1/0/`;
 export const CIRU2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CIRU2026}/Faculty/`;
 export const CIRU2026_SESSION = (sessionId: string) => `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_CIRU2026}/Sessions/${sessionId}`;
+
+//LACANO2026
+export const LACANO2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_LACANO2026}/Programme/1/0/`;
+export const LACANO2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_LACANO2026}/Faculty/`;
