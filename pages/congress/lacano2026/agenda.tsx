@@ -1,4 +1,4 @@
-import { LACANO2026_PROGRAMME, LACANO2026_FACULTY } from "@/http/api";
+import { LACANO2026_PROGRAMME, LACANO2026_FACULTY, LACANO2026_SESSION } from "@/http/api";
 import { ProgrammeData } from "@/type/type";
 import React, { useEffect, useState } from "react";
 import AgendaCalendar from "@/components/AgendaCalendar";
@@ -38,6 +38,7 @@ const LACANO2026Agenda: React.FC = () => {
     <AgendaCalendar
       data={data}
       facultyEndpoint={LACANO2026_FACULTY}
+      sessionEndpoint={LACANO2026_SESSION}
       agendaHref="/congress/lacano2026/agenda"
       speakersHref="/congress/lacano2026/speakers"
       logoSrc="/loader/logolacano.png"
@@ -48,6 +49,7 @@ const LACANO2026Agenda: React.FC = () => {
         filename: "agenda-lacano2026.pdf",
         footerText: "LACANO 2026  •  AGENDA OFICIAL",
         roomOrder: [],
+        hideChairLabel: true,
       }}
       theme={{
         primaryBg: "bg-[#1C3057]",

@@ -21,17 +21,18 @@ export function parseDate(dateStr: string): Date {
 const titlePattern = /^(Dr|Dra|Prof|Lic|Mg|PhD)[\.\s]/i;
 
 function getPDFSpeakerName(spk: Speaker, titlesMap?: Map<string, string>): string {
+  const clean = (s: string) => s.trim().replace(/^,\s*/, "");
   if (titlePattern.test(spk.First_Name?.trim() || "")) {
-    return `${spk.First_Name} ${spk.Family_Name}`;
+    return clean(`${spk.First_Name} ${spk.Family_Name}`);
   }
   const prefix = spk.Prefix_Title || (spk.Faculty_Id ? titlesMap?.get(spk.Faculty_Id) : undefined);
   if (prefix) {
-    return `${prefix} ${spk.First_Name} ${spk.Family_Name}`;
+    return clean(`${prefix} ${spk.First_Name} ${spk.Family_Name}`);
   }
   if (spk.Full_Name && titlePattern.test(spk.Full_Name.trim())) {
     return spk.Full_Name;
   }
-  return `${spk.First_Name} ${spk.Family_Name}`;
+  return clean(`${spk.First_Name} ${spk.Family_Name}`);
 }
 
 function getPDFSpeakerLabel(spk: Speaker, titlesMap?: Map<string, string>): string {
@@ -54,6 +55,8 @@ export interface GeneratePDFOptions {
   accentColor?: [number, number, number];
   /** Días a excluir del PDF (match exacto contra `Date_String`, ej: "Tue 20 Oct 2026"). El día sigue visible en la agenda en pantalla. */
   excludeDayDates?: string[];
+  /** Omite la etiqueta "Coordina:"/"Coordinan:" y muestra solo los nombres de los moderadores. */
+  hideChairLabel?: boolean;
 }
 
 export async function generateAgendaPDF(
@@ -69,6 +72,7 @@ export async function generateAgendaPDF(
     facultyEndpoint,
     accentColor = [123, 21, 53],
     excludeDayDates = [],
+    hideChairLabel = false,
   } = options;
   const [AR, AG, AB] = accentColor;
 
@@ -192,7 +196,7 @@ export async function generateAgendaPDF(
             const prefix = !alreadyHasTitle
               ? (f.Prefix_Title || (f.Faculty_Id ? titlesMap.get(f.Faculty_Id) : undefined) || "")
               : "";
-            return `${prefix ? prefix + " " : ""}${f.First_Name} ${f.Family_Name}`.trim();
+            return `${prefix ? prefix + " " : ""}${f.First_Name} ${f.Family_Name}`.trim().replace(/^,\s*/, "");
           });
       }
       if (!s.Session_Chair) return [];
@@ -201,8 +205,10 @@ export async function generateAgendaPDF(
       return [...new Set(parts)];
     })();
     if (chairs.length > 0) {
-      const label = chairs.length === 1 ? "Coordina" : "Coordinan";
-      splitWrite(`${label}: ${chairs.join(", ")}`, ML + TIME_W, TITLE_W, 7.5, "italic", AR, AG, AB, 4.5);
+      const chairText = hideChairLabel
+        ? chairs.join(", ")
+        : `${chairs.length === 1 ? "Coordina" : "Coordinan"}: ${chairs.join(", ")}`;
+      splitWrite(chairText, ML + TIME_W, TITLE_W, 7.5, "italic", AR, AG, AB, 4.5);
       y += 1;
     }
 

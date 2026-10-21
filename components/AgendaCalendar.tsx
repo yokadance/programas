@@ -144,6 +144,8 @@ type AgendaCalendarProps = {
   maxRoomColW?: number;
   /** Días a ocultar por completo de la agenda (match exacto contra `Date_String`, ej: "Mon 19 Oct 2026"). No aparecen en el selector de días ni en su contenido. */
   excludeDayDates?: string[];
+  /** Función de comparación para ordenar las salas en la vista de página (no afecta el PDF). Si no se pasa, se usa `pdfOptions.roomOrder` o alfabético. */
+  roomSortFn?: (a: string, b: string) => number;
   /**
    * Cuando una sesión tiene color asignado (por `cardColorRules`), pinta la
    * tarjeta entera con ese color de fondo y texto blanco, en vez del fondo
@@ -176,6 +178,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   excludeDayDates,
   solidCardColors,
   maxRoomColW,
+  roomSortFn,
 }) => {
   const theme: AgendaTheme = { ...defaultTheme, ...themeProp };
   const PX_PER_MIN = pxPerMin ?? DEFAULT_PX_PER_MIN;
@@ -229,6 +232,9 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
     const rooms = Array.from(
       new Set(allSessions.map((s) => s.Session_Location?.trim() || "General"))
     );
+    if (roomSortFn) {
+      return rooms.sort(roomSortFn);
+    }
     const order = pdfOptions?.roomOrder;
     if (order && order.length > 0) {
       return rooms.sort((a, b) => {

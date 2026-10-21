@@ -50,3 +50,5 @@ export const CIRU2026_SESSION = (sessionId: string) => `${SHOKLOGIC_URL}/${proce
 //LACANO2026
 export const LACANO2026_PROGRAMME = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_LACANO2026}/Programme/1/0/`;
 export const LACANO2026_FACULTY = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_LACANO2026}/Faculty/`;
+export const LACANO2026_SESSION = (sessionId: string) => `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_LACANO2026}/Sessions/${sessionId}`;
+export const LACANO2026_ABSTRACTS = `${SHOKLOGIC_URL}/${process.env.NEXT_PUBLIC_SHK_ID_LACANO2026}/Abstracts/`;

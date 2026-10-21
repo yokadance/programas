@@ -6,6 +6,18 @@ import Loader from "@/components/Loader";
 import { generateAgendaPDF } from "@/utils/generateAgendaPDF";
 import { FileDown } from "lucide-react";
 
+const roomPriority = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.startsWith("ballroom")) return 0;
+  if (n.startsWith("sala")) return 1;
+  if (n.startsWith("facultad")) return 2;
+  return 3;
+};
+const alagRoomSortFn = (a: string, b: string) => {
+  const diff = roomPriority(a) - roomPriority(b);
+  return diff !== 0 ? diff : a.localeCompare(b, "es", { sensitivity: "base" });
+};
+
 const ALAG2026: React.FC = () => {
   const [data, setData] = useState<ProgrammeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +73,7 @@ const ALAG2026: React.FC = () => {
         facultyEndpoint={ALAG2026_FACULTY}
         primaryColor="#083E84"
         hidePosterCoauthors
+        roomSortFn={alagRoomSortFn}
         headerImages={[
           {
             src: "/portadas/alag/cabezalALAG.png",

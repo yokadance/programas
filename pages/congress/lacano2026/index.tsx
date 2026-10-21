@@ -1,11 +1,62 @@
-import { LACANO2026_PROGRAMME } from "@/http/api";
+import { LACANO2026_PROGRAMME, LACANO2026_FACULTY, LACANO2026_ABSTRACTS } from "@/http/api";
 import { ProgrammeData } from "@/type/type";
 import React, { useEffect, useState } from "react";
 import AgendaTable from "@/components/AgendaTable";
 import Loader from "@/components/Loader";
-import { LACANO2026_FACULTY } from "@/http/api";
 import { generateAgendaPDF } from "@/utils/generateAgendaPDF";
 import { FileDown } from "lucide-react";
+
+type AbstractEntry = {
+  Wab: string;
+  Family_Name: string;
+  First_Name: string;
+};
+
+/** Recorre el ProgrammeData y rellena Abstract.Authors con el nombre
+ *  del presentador obtenido desde la API de Abstracts, cuando está vacío. */
+function enrichWithAbstracts(
+  programme: ProgrammeData,
+  abstractsMap: Map<string, string>,
+): ProgrammeData {
+  const enriched = JSON.parse(JSON.stringify(programme)) as ProgrammeData;
+  for (const day of Object.values(enriched.Programme.Days)) {
+    for (const group of Object.values(day.Session_Groups)) {
+      for (const session of group.Sessions) {
+        for (const pres of session.Presentations ?? []) {
+          const hasAuthors =
+            pres.Abstract?.Authors?.length > 0 ||
+            pres.AllSpeakers?.length > 0 ||
+            pres.AllSpeakersList?.trim();
+          if (hasAuthors) continue;
+          const abstractId = pres.Abstract?.Abstract_ID;
+          if (!abstractId) continue;
+          const name = abstractsMap.get(abstractId);
+          if (!name) continue;
+          pres.Abstract.Authors = [
+            {
+              Family_Name: name,
+              First_Name: "",
+              Author_Number: "1",
+              Country_Name: "",
+              City: "",
+              Address_1: "",
+              Address_2: "",
+              Address_3: "",
+              Address_4: "",
+              Country_Code: "",
+              Presenting: "1",
+              Biography: "",
+              Image01: "",
+              Company: "",
+              AuthorID: "",
+            },
+          ];
+        }
+      }
+    }
+  }
+  return enriched;
+}
 
 const LACANO2026: React.FC = () => {
   const [data, setData] = useState<ProgrammeData | null>(null);
@@ -15,16 +66,28 @@ const LACANO2026: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(LACANO2026_PROGRAMME);
-        if (!res.ok) {
-          console.error("Error fetching data:", res.statusText);
+        const [progRes, absRes] = await Promise.all([
+          fetch(LACANO2026_PROGRAMME),
+          fetch(LACANO2026_ABSTRACTS),
+        ]);
+        if (!progRes.ok) {
           setError("Error fetching data");
           setLoading(false);
           return;
         }
-        const json = await res.json();
-        setData(json);
-      } catch (err) {
+        const progJson: ProgrammeData = await progRes.json();
+        const abstractsMap = new Map<string, string>();
+        if (absRes.ok) {
+          const absJson: AbstractEntry[] = await absRes.json();
+          for (const entry of absJson) {
+            const name = entry.Family_Name?.trim();
+            if (entry.Wab && name) {
+              abstractsMap.set(entry.Wab, name);
+            }
+          }
+        }
+        setData(enrichWithAbstracts(progJson, abstractsMap));
+      } catch {
         setError("Network error");
       } finally {
         setLoading(false);
@@ -43,7 +106,7 @@ const LACANO2026: React.FC = () => {
       />
     );
   if (error) return <p>Error: {error}</p>;
-  console.log("Programa:", data);
+
   const handleDownloadPDF = async () => {
     if (!data) return;
     await generateAgendaPDF(data, {
@@ -53,15 +116,17 @@ const LACANO2026: React.FC = () => {
       filename: "agenda-lacano2026.pdf",
       footerText: "LACANO 2026  •  AGENDA OFICIAL",
       roomOrder: [],
+      hideChairLabel: true,
     });
   };
 
-  if (!data) return <p>No hay datos disponibles, data undefinded</p>;
+  if (!data) return <p>No hay datos disponibles</p>;
   return (
     <div className="relative">
       <button
         onClick={handleDownloadPDF}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#1C3057] text-white text-sm font-semibold px-4 py-3 rounded-full shadow-lg hover:bg-[#142444] active:scale-95 transition-all"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 text-white text-sm font-semibold px-4 py-3 rounded-full shadow-lg active:scale-95 transition-all"
+        style={{ backgroundColor: "#1d407c" }}
       >
         <FileDown className="w-4 h-4" />
         Descargar PDF
@@ -69,6 +134,16 @@ const LACANO2026: React.FC = () => {
       <AgendaTable
         data={data}
         facultyEndpoint={LACANO2026_FACULTY}
+        primaryColor="#1d407c"
+        lightAccentBg="#fef9d9"
+        showOnlyFamilyName
+        headerImages={[
+          {
+            src: "/portadas/lacano2026/lacano2026.png",
+            alt: "LACANO 2026",
+            className: "h-16 md:h-24 w-auto object-contain",
+          },
+        ]}
       />
     </div>
   );

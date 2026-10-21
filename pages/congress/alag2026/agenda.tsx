@@ -40,6 +40,18 @@ const ALAG_CARD_COLOR_RULES = [
   },
 ];
 
+const roomPriority = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.startsWith("ballroom")) return 0;
+  if (n.startsWith("sala")) return 1;
+  if (n.startsWith("facultad")) return 2;
+  return 3;
+};
+const alagRoomSortFn = (a: string, b: string) => {
+  const diff = roomPriority(a) - roomPriority(b);
+  return diff !== 0 ? diff : a.localeCompare(b, "es", { sensitivity: "base" });
+};
+
 const ALAG2026Agenda: React.FC = () => {
   const [data, setData] = useState<ProgrammeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,6 +122,7 @@ const ALAG2026Agenda: React.FC = () => {
       cardColorRules={ALAG_CARD_COLOR_RULES}
       solidCardColors
       excludeDayDates={["Mon 19 Oct 2026"]}
+      roomSortFn={alagRoomSortFn}
       theme={{
         primaryBg: "bg-[#083E84]",
         primaryText: "text-[#3B7EE9]",

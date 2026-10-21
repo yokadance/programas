@@ -13,21 +13,22 @@ const formatFacultyName = (f: Faculty, titlesMap?: Map<string, string>) => {
   const prefix = !alreadyHasTitle
     ? (f.Prefix_Title || (f.Faculty_Id ? titlesMap?.get(f.Faculty_Id) : undefined) || "")
     : "";
-  return `${prefix ? prefix + " " : ""}${f.First_Name} ${f.Family_Name}`.trim();
+  return `${prefix ? prefix + " " : ""}${f.First_Name} ${f.Family_Name}`.trim().replace(/^,\s*/, "");
 };
 
 const getSpeakerName = (spk: Speaker, titlesMap?: Map<string, string>): string => {
+  const clean = (s: string) => s.trim().replace(/^,\s*/, "");
   if (titlePattern.test(spk.First_Name?.trim() || "")) {
-    return `${spk.First_Name} ${spk.Family_Name}`;
+    return clean(`${spk.First_Name} ${spk.Family_Name}`);
   }
   const prefix = spk.Prefix_Title || (spk.Faculty_Id ? titlesMap?.get(spk.Faculty_Id) : undefined);
   if (prefix) {
-    return `${prefix} ${spk.First_Name} ${spk.Family_Name}`;
+    return clean(`${prefix} ${spk.First_Name} ${spk.Family_Name}`);
   }
   if (spk.Full_Name && titlePattern.test(spk.Full_Name.trim())) {
     return spk.Full_Name;
   }
-  return `${spk.First_Name} ${spk.Family_Name}`;
+  return clean(`${spk.First_Name} ${spk.Family_Name}`);
 };
 
 const splitNames = (

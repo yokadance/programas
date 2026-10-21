@@ -53,6 +53,10 @@ type AgendaTableProps = {
   headerBarColors?: string[];
   /** Fondo claro (hex) del encabezado de la tabla y del badge "Presentador". Default: rosa `#F9EDF1` (heredado de cc2026). */
   lightAccentBg?: string;
+  /** Función de comparación para ordenar las salas en el filtro y la lista. */
+  roomSortFn?: (a: string, b: string) => number;
+  /** Muestra solo el apellido (Family_Name) de cada disertante, sin nombre ni coma. */
+  showOnlyFamilyName?: boolean;
 };
 
 const titlePattern = /^(Dr|Dra|Prof|Lic|Mg|PhD)[\.\s]/i;
@@ -61,17 +65,19 @@ const getSpeakerName = (
   spk: { Faculty_Id?: string; First_Name: string; Family_Name: string; Full_Name?: string; Prefix_Title?: string },
   titlesMap?: Map<string, string>,
 ): string => {
-  if (titlePattern.test(spk.First_Name?.trim() || "")) {
-    return `${spk.First_Name} ${spk.Family_Name}`;
+  const firstName = spk.First_Name?.trim() || "";
+  const familyName = spk.Family_Name?.trim() || "";
+  if (titlePattern.test(firstName)) {
+    return [firstName, familyName].filter(Boolean).join(" ");
   }
   const prefix = spk.Prefix_Title || (spk.Faculty_Id ? titlesMap?.get(spk.Faculty_Id) : undefined);
   if (prefix) {
-    return `${prefix} ${spk.First_Name} ${spk.Family_Name}`;
+    return [prefix, firstName, familyName].filter(Boolean).join(" ");
   }
   if (spk.Full_Name && titlePattern.test(spk.Full_Name.trim())) {
     return spk.Full_Name;
   }
-  return `${spk.First_Name} ${spk.Family_Name}`;
+  return [firstName, familyName].filter(Boolean).join(" ");
 };
 
 /** Devuelve la lista de coordinadores (no un string unido) para poder contarlos. */
@@ -102,7 +108,7 @@ const getChairs = (session: Session, titlesMap?: Map<string, string>): string[] 
 /** "Coordina" con una sola persona, "Coordinan" con dos o más. */
 export const chairLabel = (count: number) => (count === 1 ? "Coordina" : "Coordinan");
 
-const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primaryColor, headerImages, neutralText, hidePosterCoauthors, headerBarColors, lightAccentBg }) => {
+const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primaryColor, headerImages, neutralText, hidePosterCoauthors, headerBarColors, lightAccentBg, roomSortFn, showOnlyFamilyName }) => {
   const PRIMARY = primaryColor ?? DEFAULT_PRIMARY;
   const TEXT = neutralText ? "#1F2937" : PRIMARY;
   const LIGHT_BG = lightAccentBg ?? "#F9EDF1";
@@ -139,7 +145,9 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
 
   const uniqueRooms = Array.from(
     new Set(allSessions.map((s) => s.Session_Location).filter(Boolean)),
-  ).sort((a, b) => a!.localeCompare(b!, "es", { sensitivity: "base" }));
+  ).sort((a, b) =>
+    roomSortFn ? roomSortFn(a!, b!) : a!.localeCompare(b!, "es", { sensitivity: "base" }),
+  );
 
   const sessions = selectedRoom
     ? allSessions.filter((s) => s.Session_Location === selectedRoom)
@@ -351,8 +359,8 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                     </span>
                                   )}
                                 {renderRichText(presentation.Presentation_Title)}
-                                {presentation.Abstract.Authors.length > 0 &&
-                                  (() => {
+                                {presentation.Abstract.Authors.length > 0
+                                  ? (() => {
                                     const presentingAuthor =
                                       presentation.Abstract.Authors.find(
                                         (a: Authors) => a.Presenting === "1",
@@ -373,10 +381,11 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                             backgroundColor: LIGHT_BG,
                                           }}>
                                           Presentador:{" "}
-                                          {presentingAuthor.First_Name}{" "}
-                                          {presentingAuthor.Family_Name} –{" "}
-                                          {presentingAuthor.Country_Name} –{" "}
-                                          {presentingAuthor.Company}
+                                          {showOnlyFamilyName
+                                            ? presentingAuthor.Family_Name?.trim()
+                                            : [presentingAuthor.First_Name?.trim(), presentingAuthor.Family_Name?.trim()].filter(Boolean).join(" ")}
+                                          {!showOnlyFamilyName && presentingAuthor.Country_Name ? ` – ${presentingAuthor.Country_Name}` : ""}
+                                          {!showOnlyFamilyName && presentingAuthor.Company ? ` – ${presentingAuthor.Company}` : ""}
                                         </div>
                                         {!isPoster && otherAuthors.length > 0 && (
                                           <ul className="list-disc list-inside text-xs text-gray-600 mt-2">
@@ -386,10 +395,11 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                                 idx: number,
                                               ) => (
                                                 <li key={idx}>
-                                                  {author.First_Name}{" "}
-                                                  {author.Family_Name} –{" "}
-                                                  {author.Country_Name} –{" "}
-                                                  {author.Company}
+                                                  {showOnlyFamilyName
+                                                    ? author.Family_Name?.trim()
+                                                    : [author.First_Name?.trim(), author.Family_Name?.trim()].filter(Boolean).join(" ")}
+                                                  {!showOnlyFamilyName && author.Country_Name ? ` – ${author.Country_Name}` : ""}
+                                                  {!showOnlyFamilyName && author.Company ? ` – ${author.Company}` : ""}
                                                 </li>
                                               ),
                                             )}
@@ -397,32 +407,60 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                                         )}
                                       </>
                                     );
+                                  })()
+                                  : (() => {
+                                    const fallback =
+                                      presentation.Abstract.AbstractSpeakers?.trim() ||
+                                      presentation.Abstract.AbstractAuthor?.trim() ||
+                                      presentation.Abstract.AllAuthorsList?.trim() ||
+                                      presentation.Abstract.AbstractAllAuthors?.trim();
+                                    if (!fallback) return null;
+                                    return (
+                                      <div
+                                        className="mt-2 text-xs font-semibold px-2 py-1 rounded w-fit"
+                                        style={{ color: TEXT, backgroundColor: LIGHT_BG }}>
+                                        {fallback}
+                                      </div>
+                                    );
                                   })()}
                               </div>
                               <ul className="mt-2 space-y-1 ml-2">
-                                {presentation.AllSpeakers.slice()
-                                  .sort((a, b) => a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" }))
-                                  .map((spk, i) => (
-                                    <li
-                                      key={i}
-                                      className="flex items-center gap-2">
-                                      <img
-                                        src={spk.Image01 || "/user-avatar.png"}
-                                        alt={spk.Full_Name}
-                                        className="w-7 h-7 rounded-full object-cover ring-1 ring-gray-200 flex-shrink-0"
-                                      />
-                                      <button
-                                        onClick={() => openSpeakerModal(spk.Faculty_Id)}
-                                        className="text-sm hover:underline text-left font-medium"
-                                        style={{ color: TEXT }}>
-                                        {(() => {
-                                          const name = getSpeakerName(spk, titlesMap);
-                                          const country = getCountryLabel(spk.Country_Name);
-                                          return country ? `${name} (${country})` : name;
-                                        })()}
-                                      </button>
-                                    </li>
-                                  ))}
+                                {presentation.AllSpeakers.length > 0
+                                  ? presentation.AllSpeakers.slice()
+                                      .sort((a, b) => a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" }))
+                                      .map((spk, i) => (
+                                        <li
+                                          key={i}
+                                          className="flex items-center gap-2">
+                                          <img
+                                            src={spk.Image01 || "/user-avatar.png"}
+                                            alt={spk.Full_Name}
+                                            className="w-7 h-7 rounded-full object-cover ring-1 ring-gray-200 flex-shrink-0"
+                                          />
+                                          <button
+                                            onClick={() => openSpeakerModal(spk.Faculty_Id)}
+                                            className="text-sm hover:underline text-left font-medium"
+                                            style={{ color: TEXT }}>
+                                            {showOnlyFamilyName
+                                              ? spk.Family_Name?.trim().replace(/^,\s*/, "")
+                                              : (() => {
+                                                  const name = getSpeakerName(spk, titlesMap);
+                                                  const country = getCountryLabel(spk.Country_Name);
+                                                  return country ? `${name} (${country})` : name;
+                                                })()}
+                                          </button>
+                                        </li>
+                                      ))
+                                  : presentation.AllSpeakersList?.trim()
+                                    ? (
+                                        <li className="flex items-center gap-2">
+                                          <UserRound className="w-3.5 h-3.5 flex-shrink-0" style={{ color: PRIMARY }} />
+                                          <span className="text-sm font-medium" style={{ color: TEXT }}>
+                                            {presentation.AllSpeakersList.trim()}
+                                          </span>
+                                        </li>
+                                      )
+                                    : null}
                               </ul>
                             </div>
                           </div>
@@ -513,30 +551,102 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                             )}
                           {renderRichText(presentation.Presentation_Title)}
                         </div>
+                        {/* Abstract authors — mobile */}
+                        {presentation.Abstract.Authors.length > 0
+                          ? (() => {
+                            const presentingAuthor =
+                              presentation.Abstract.Authors.find(
+                                (a: Authors) => a.Presenting === "1",
+                              ) || presentation.Abstract.Authors[0];
+                            const otherAuthors =
+                              presentation.Abstract.Authors.filter(
+                                (a: Authors) => a !== presentingAuthor,
+                              );
+                            const isPoster =
+                              hidePosterCoauthors &&
+                              /poster/i.test(session.Session_Title || "");
+                            return (
+                              <div className="ml-8 mt-1">
+                                <div
+                                  className="text-xs font-semibold px-2 py-1 rounded w-fit"
+                                  style={{ color: TEXT, backgroundColor: LIGHT_BG }}>
+                                  Presentador:{" "}
+                                  {showOnlyFamilyName
+                                    ? presentingAuthor.Family_Name?.trim()
+                                    : [presentingAuthor.First_Name?.trim(), presentingAuthor.Family_Name?.trim()].filter(Boolean).join(" ")}
+                                  {!showOnlyFamilyName && presentingAuthor.Country_Name ? ` – ${presentingAuthor.Country_Name}` : ""}
+                                  {!showOnlyFamilyName && presentingAuthor.Company ? ` – ${presentingAuthor.Company}` : ""}
+                                </div>
+                                {!isPoster && otherAuthors.length > 0 && (
+                                  <ul className="list-disc list-inside text-xs text-gray-600 mt-1">
+                                    {otherAuthors.map((author: Authors, idx: number) => (
+                                      <li key={idx}>
+                                        {showOnlyFamilyName
+                                          ? author.Family_Name?.trim()
+                                          : [author.First_Name?.trim(), author.Family_Name?.trim()].filter(Boolean).join(" ")}
+                                        {!showOnlyFamilyName && author.Country_Name ? ` – ${author.Country_Name}` : ""}
+                                        {!showOnlyFamilyName && author.Company ? ` – ${author.Company}` : ""}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })()
+                          : (() => {
+                            const fallback =
+                              presentation.Abstract.AbstractSpeakers?.trim() ||
+                              presentation.Abstract.AbstractAuthor?.trim() ||
+                              presentation.Abstract.AllAuthorsList?.trim() ||
+                              presentation.Abstract.AbstractAllAuthors?.trim();
+                            if (!fallback) return null;
+                            return (
+                              <div className="ml-8 mt-1">
+                                <div
+                                  className="text-xs font-semibold px-2 py-1 rounded w-fit"
+                                  style={{ color: TEXT, backgroundColor: LIGHT_BG }}>
+                                  {fallback}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         <div className="space-y-2">
-                          {presentation.AllSpeakers.slice()
-                            .sort((a, b) => a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" }))
-                            .map((spk, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center gap-2 ml-8">
-                              <img
-                                src={spk.Image01 || "/user-avatar.png"}
-                                alt={spk.Full_Name}
-                                className="w-7 h-7 rounded-full object-cover ring-1 ring-gray-200 flex-shrink-0"
-                              />
-                              <button
-                                onClick={() => openSpeakerModal(spk.Faculty_Id)}
-                                className="text-sm hover:underline text-left font-medium"
-                                style={{ color: TEXT }}>
-                                {(() => {
-                                  const name = getSpeakerName(spk, titlesMap);
-                                  const country = getCountryLabel(spk.Country_Name);
-                                  return country ? `${name} (${country})` : name;
-                                })()}
-                              </button>
-                            </div>
-                          ))}
+                          {presentation.AllSpeakers.length > 0
+                            ? presentation.AllSpeakers.slice()
+                                .sort((a, b) => a.Family_Name.localeCompare(b.Family_Name, "es", { sensitivity: "base" }))
+                                .map((spk, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center gap-2 ml-8">
+                                    <img
+                                      src={spk.Image01 || "/user-avatar.png"}
+                                      alt={spk.Full_Name}
+                                      className="w-7 h-7 rounded-full object-cover ring-1 ring-gray-200 flex-shrink-0"
+                                    />
+                                    <button
+                                      onClick={() => openSpeakerModal(spk.Faculty_Id)}
+                                      className="text-sm hover:underline text-left font-medium"
+                                      style={{ color: TEXT }}>
+                                      {showOnlyFamilyName
+                                        ? spk.Family_Name?.trim().replace(/^,\s*/, "")
+                                        : (() => {
+                                            const name = getSpeakerName(spk, titlesMap);
+                                            const country = getCountryLabel(spk.Country_Name);
+                                            return country ? `${name} (${country})` : name;
+                                          })()}
+                                    </button>
+                                  </div>
+                                ))
+                            : presentation.AllSpeakersList?.trim()
+                              ? (
+                                  <div className="flex items-center gap-2 ml-8">
+                                    <UserRound className="w-3.5 h-3.5 flex-shrink-0" style={{ color: PRIMARY }} />
+                                    <span className="text-sm font-medium" style={{ color: TEXT }}>
+                                      {presentation.AllSpeakersList.trim()}
+                                    </span>
+                                  </div>
+                                )
+                              : null}
                         </div>
                       </div>
                     ))
