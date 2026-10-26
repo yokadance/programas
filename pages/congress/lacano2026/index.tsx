@@ -67,8 +67,8 @@ const LACANO2026: React.FC = () => {
     const fetchData = async () => {
       try {
         const [progRes, absRes] = await Promise.all([
-          fetch(LACANO2026_PROGRAMME),
-          fetch(LACANO2026_ABSTRACTS),
+          fetch(LACANO2026_PROGRAMME, { cache: "no-store" }),
+          fetch(LACANO2026_ABSTRACTS, { cache: "no-store" }),
         ]);
         if (!progRes.ok) {
           setError("Error fetching data");
@@ -109,14 +109,27 @@ const LACANO2026: React.FC = () => {
 
   const handleDownloadPDF = async () => {
     if (!data) return;
+    // Collect unique rooms in natural order to force one page per sala
+    const rooms: string[] = [];
+    for (const day of Object.values(data.Programme.Days)) {
+      for (const group of Object.values(day.Session_Groups)) {
+        for (const session of group.Sessions) {
+          const room = session.Session_Location?.trim() || "General";
+          if (room.toLowerCase() !== "foyer" && !rooms.includes(room)) {
+            rooms.push(room);
+          }
+        }
+      }
+    }
     await generateAgendaPDF(data, {
       coverImagePath: "/portadas/portada-lacano.jpg",
       title: "AGENDA",
       subtitle: "LACANO 2026",
       filename: "agenda-lacano2026.pdf",
       footerText: "LACANO 2026  •  AGENDA OFICIAL",
-      roomOrder: [],
+      roomOrder: rooms,
       hideChairLabel: true,
+      hidePresentationTitle: true,
     });
   };
 
@@ -137,6 +150,7 @@ const LACANO2026: React.FC = () => {
         primaryColor="#1d407c"
         lightAccentBg="#fef9d9"
         showOnlyFamilyName
+        hidePresentationTitle
         headerImages={[
           {
             src: "/portadas/lacano2026/lacano2026.png",

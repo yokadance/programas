@@ -11,7 +11,7 @@ export default function LACANO2026PDF() {
     const run = async () => {
       try {
         setStatus("loading");
-        const res = await fetch(LACANO2026_PROGRAMME);
+        const res = await fetch(LACANO2026_PROGRAMME, { cache: "no-store" });
         if (!res.ok) throw new Error("Error al obtener el programa");
         const data = await res.json();
 

@@ -57,6 +57,8 @@ type AgendaTableProps = {
   roomSortFn?: (a: string, b: string) => number;
   /** Muestra solo el apellido (Family_Name) de cada disertante, sin nombre ni coma. */
   showOnlyFamilyName?: boolean;
+  /** Oculta el título de cada presentación (flecha + texto), mostrando solo los disertantes. */
+  hidePresentationTitle?: boolean;
 };
 
 const titlePattern = /^(Dr|Dra|Prof|Lic|Mg|PhD)[\.\s]/i;
@@ -108,7 +110,7 @@ const getChairs = (session: Session, titlesMap?: Map<string, string>): string[] 
 /** "Coordina" con una sola persona, "Coordinan" con dos o más. */
 export const chairLabel = (count: number) => (count === 1 ? "Coordina" : "Coordinan");
 
-const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primaryColor, headerImages, neutralText, hidePosterCoauthors, headerBarColors, lightAccentBg, roomSortFn, showOnlyFamilyName }) => {
+const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primaryColor, headerImages, neutralText, hidePosterCoauthors, headerBarColors, lightAccentBg, roomSortFn, showOnlyFamilyName, hidePresentationTitle }) => {
   const PRIMARY = primaryColor ?? DEFAULT_PRIMARY;
   const TEXT = neutralText ? "#1F2937" : PRIMARY;
   const LIGHT_BG = lightAccentBg ?? "#F9EDF1";
@@ -344,21 +346,21 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                             key={pIdx}
                             className={`pl-4 relative ${pIdx !== 0 ? "border-t border-gray-100 mt-3 pt-3" : "mt-2"}`}>
                             <div className="relative pl-4">
-                              {presentation.Presentation_Title && (
+                              {!hidePresentationTitle && presentation.Presentation_Title && (
                                 <ArrowRight
                                   className="absolute left-0 top-1 w-3.5 h-3.5"
                                   style={{ color: PRIMARY }}
                                 />
                               )}
                               <div className="ml-2 text-sm text-gray-800 font-medium">
-                                {presentation.Start_Time &&
+                                {!hidePresentationTitle && presentation.Start_Time &&
                                   presentation.Start_Time !== "00:00" && (
                                     <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mb-1 mr-2">
                                       <Clock className="w-3 h-3" />
                                       {presentation.Start_Time}
                                     </span>
                                   )}
-                                {renderRichText(presentation.Presentation_Title)}
+                                {!hidePresentationTitle && renderRichText(presentation.Presentation_Title)}
                                 {presentation.Abstract.Authors.length > 0
                                   ? (() => {
                                     const presentingAuthor =
@@ -535,22 +537,24 @@ const AgendaTable: React.FC<AgendaTableProps> = ({ data, facultyEndpoint, primar
                     )
                     .map((presentation, pIdx) => (
                       <div key={pIdx}>
-                        <div
-                          className="text-sm font-medium mb-1 ml-2 relative pl-6"
-                          style={{ color: TEXT }}>
-                          <ArrowRight
-                            className="absolute left-0 top-1 w-3.5 h-3.5"
-                            style={{ color: PRIMARY }}
-                          />
-                          {presentation.Start_Time &&
-                            presentation.Start_Time !== "00:00" && (
-                              <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mb-1 mr-2">
-                                <Clock className="w-3 h-3" />
-                                {presentation.Start_Time}
-                              </span>
-                            )}
-                          {renderRichText(presentation.Presentation_Title)}
-                        </div>
+                        {!hidePresentationTitle && (
+                          <div
+                            className="text-sm font-medium mb-1 ml-2 relative pl-6"
+                            style={{ color: TEXT }}>
+                            <ArrowRight
+                              className="absolute left-0 top-1 w-3.5 h-3.5"
+                              style={{ color: PRIMARY }}
+                            />
+                            {presentation.Start_Time &&
+                              presentation.Start_Time !== "00:00" && (
+                                <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mb-1 mr-2">
+                                  <Clock className="w-3 h-3" />
+                                  {presentation.Start_Time}
+                                </span>
+                              )}
+                            {renderRichText(presentation.Presentation_Title)}
+                          </div>
+                        )}
                         {/* Abstract authors — mobile */}
                         {presentation.Abstract.Authors.length > 0
                           ? (() => {

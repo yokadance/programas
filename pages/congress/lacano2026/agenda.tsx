@@ -12,7 +12,7 @@ const LACANO2026Agenda: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(LACANO2026_PROGRAMME);
+        const res = await fetch(LACANO2026_PROGRAMME, { cache: "no-store" });
         if (!res.ok) {
           setError("Error al obtener los datos del programa");
           setLoading(false);

@@ -57,6 +57,8 @@ export interface GeneratePDFOptions {
   excludeDayDates?: string[];
   /** Omite la etiqueta "Coordina:"/"Coordinan:" y muestra solo los nombres de los moderadores. */
   hideChairLabel?: boolean;
+  /** Oculta el título de cada presentación (solo muestra el disertante), igual que `hidePresentationTitle` en AgendaTable. */
+  hidePresentationTitle?: boolean;
 }
 
 export async function generateAgendaPDF(
@@ -73,6 +75,7 @@ export async function generateAgendaPDF(
     accentColor = [123, 21, 53],
     excludeDayDates = [],
     hideChairLabel = false,
+    hidePresentationTitle = false,
   } = options;
   const [AR, AG, AB] = accentColor;
 
@@ -230,7 +233,9 @@ export async function generateAgendaPDF(
         }
 
         // Presentation title — aligned to title column
-        splitWrite(`• ${stripTags(p.Presentation_Title)}`, titleX, TITLE_W, 7.5, "bold", 70, 70, 70, 4);
+        if (!hidePresentationTitle) {
+          splitWrite(`• ${stripTags(p.Presentation_Title)}`, titleX, TITLE_W, 7.5, "bold", 70, 70, 70, 4);
+        }
 
         // Speakers — sorted by family name, with title and country
         if (p.AllSpeakers?.length) {
