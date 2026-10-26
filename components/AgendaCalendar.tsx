@@ -152,6 +152,13 @@ type AgendaCalendarProps = {
    * blanco con borde de acento que usa `roomColors`.
    */
   solidCardColors?: boolean;
+  /**
+   * Permite sobreescribir el texto de coordinadores para sesiones específicas,
+   * identificadas por su `Session_Id`. El string se muestra en el orden dado
+   * (sin reordenar alfabéticamente).
+   * Ej: `{ MOD6G: "Dra. Viviana Nachmann, Dra. Carla Bianchi" }`
+   */
+  chairOverrides?: Record<string, string>;
 };
 
 const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
@@ -179,6 +186,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
   solidCardColors,
   maxRoomColW,
   roomSortFn,
+  chairOverrides,
 }) => {
   const theme: AgendaTheme = { ...defaultTheme, ...themeProp };
   const PX_PER_MIN = pxPerMin ?? DEFAULT_PX_PER_MIN;
@@ -915,6 +923,7 @@ const AgendaCalendar: React.FC<AgendaCalendarProps> = ({
           neutralText={neutralText}
           splitChairRoles={splitChairRoles}
           pluralizeChairLabel={pluralizeChairLabel}
+          chairOverrides={chairOverrides}
         />
       )}
     </div>

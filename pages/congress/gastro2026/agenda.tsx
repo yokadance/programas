@@ -58,9 +58,19 @@ const GASTRO2026Agenda: React.FC = () => {
         title: "AGENDA",
         subtitle: "GASTROENDO 2026",
         footerText: "GASTROENDO 2026  •  AGENDA OFICIAL",
-        roomOrder: ["SALA 1", "SALA 2", "SALA 3", "SALA ENTREPISO", "FOYER"],
+        roomOrder: [
+          "SALA MANSA - GASTROENTEROLOGÍA",
+          "SALA BRAVA - ENDOSCOPÍA",
+          "SALAS OCÉANOS - ASISTENTES ENDOSCOPÍA",
+          "PLENARIA",
+          "FOYER",
+        ],
         facultyEndpoint: GASTRO2026_FACULTY,
         accentColor: [63, 169, 202],
+      }}
+      chairOverrides={{
+        // EII 2 (6 nov, Sala Mansa): Viviana Nachmann primero, luego Carla Bianchi
+        MOD6G: "Dra. Viviana Nachmann, Dra. Carla Bianchi",
       }}
       roomScopedBreakPattern={/coffee|caf[eé]|tiempo libre/i}
       // Salas con muchas sesiones cortas y seguidas (10 min entre sí): con el

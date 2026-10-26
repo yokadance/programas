@@ -83,6 +83,11 @@ type SessionDetailModalProps = {
   splitChairRoles?: boolean;
   /** Usa "Modera" con una sola persona y "Moderan" con dos o más, en vez de "Modera" fijo. */
   pluralizeChairLabel?: boolean;
+  /**
+   * Sobreescribe el texto de coordinadores para sesiones específicas (por `Session_Id`).
+   * Se muestra en el orden dado, sin reordenar alfabéticamente.
+   */
+  chairOverrides?: Record<string, string>;
 };
 
 const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
@@ -94,6 +99,7 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
   neutralText,
   splitChairRoles,
   pluralizeChairLabel,
+  chairOverrides,
 }) => {
   const [selectedFacultyId, setSelectedFacultyId] = useState<string | null>(null);
   const [sessionDetail, setSessionDetail] = useState<Session>(session);
@@ -248,7 +254,10 @@ const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
                 })()
               ) : (
                 (() => {
-                  const chairs = getChairs(sessionDetail.Session_Faculty ?? [], sessionDetail.Session_Chair, titlesMap);
+                  const overrideStr = chairOverrides?.[session.Session_Id];
+                  const chairs = overrideStr
+                    ? splitNames(overrideStr, { sort: false })
+                    : getChairs(sessionDetail.Session_Faculty ?? [], sessionDetail.Session_Chair, titlesMap);
                   if (chairs.length === 0) return null;
                   const label =
                     pluralizeChairLabel && chairs.length > 1 ? "Moderan" : "Modera";
